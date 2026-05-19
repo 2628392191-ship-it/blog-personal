@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/blog_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: ljr040209.
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+sa-token:
+  jwt-secret-key: blog-system-secret-key-change-me

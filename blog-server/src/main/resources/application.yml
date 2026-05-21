@@ -26,7 +26,6 @@ sa-token:
   timeout: 2592000
   active-timeout: -1
   is-concurrent: true
-  is-share: true
-  token-style: random-128
+  is-share: false
   is-log: false
   jwt-secret-key: ${sa-token.jwt-secret-key}

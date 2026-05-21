@@ -14,6 +14,9 @@ export const tagList = () => http.get('/api/content/tag/list')
 export const articleDetail = (id) => http.get(`/api/content/article/${id}`)
 
 export const updateProfile = (payload) => http.put('/api/auth/profile', payload)
+export const changePassword = (payload) => http.put('/api/auth/password', payload)
+
+export const toggleLike = (id) => http.post(`/api/content/article/${id}/like`)
 
 export const commentList = (articleId) => http.get(`/api/comment/article/${articleId}`)
 export const addComment = (payload) => http.post('/api/comment', payload)

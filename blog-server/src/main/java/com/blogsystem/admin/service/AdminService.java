@@ -46,10 +46,9 @@ public class AdminService {
      */
     public void deleteUser(Long id) {
         SysUser user = sysUserMapper.selectById(id);
-        if (user == null || user.getDeleted() == 1) {
+        if (user == null) {
             throw new IllegalArgumentException("用户不存在");
         }
-        user.setDeleted(1);
-        sysUserMapper.updateById(user);
+        sysUserMapper.deleteById(id);
     }
 }

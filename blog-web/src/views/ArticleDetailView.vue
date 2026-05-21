@@ -6,8 +6,20 @@
       <h1>{{ article.title }}</h1>
       <div class="hero-meta">
         <span>{{ article.publishTime || '待发布' }}</span>
+        <span v-if="article.isTop" class="top-badge">置顶</span>
         <span>阅读 {{ article.viewCount || 0 }}</span>
+        <button
+          class="like-btn"
+          :class="{ liked: liked }"
+          @click="doLike"
+          :disabled="!auth.isLoggedIn"
+          :title="auth.isLoggedIn ? '点赞' : '登录后可点赞'"
+        >
+          <span class="like-icon">{{ liked ? '♥' : '♡' }}</span>
+          <span>{{ article.likeCount || 0 }}</span>
+        </button>
       </div>
+      <img v-if="article.coverUrl" :src="article.coverUrl" class="detail-cover" alt="cover" />
       <div class="hero-line"></div>
     </header>
 
@@ -15,7 +27,7 @@
       <div class="content" v-html="renderedMarkdown"></div>
     </section>
 
-    <section class="comment-card">
+    <section class="comment-card" v-if="article.isCommentEnabled !== 0">
       <div class="comment-head">
         <h2>评论区</h2>
         <span v-if="auth.isLoggedIn">{{ comments.length }} 条互动</span>
@@ -72,17 +84,21 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { addComment, articleDetail, commentList } from '../api'
+import { addComment, articleDetail, commentList, toggleLike } from '../api'
 import { useAuthStore } from '../stores/auth'
+import MarkdownIt from 'markdown-it'
 
 const route = useRoute()
 const auth = useAuthStore()
 const article = ref(null)
 const comments = ref([])
 const content = ref('')
+const liked = ref(false)
 const msg = ref('')
 const isError = ref(false)
 const replyContent = ref({})
+
+const md = new MarkdownIt({ html: true, breaks: true })
 
 const fmtTime = (raw) => {
   if (!raw) return ''
@@ -93,23 +109,7 @@ const fmtTime = (raw) => {
 
 const renderedMarkdown = computed(() => {
   if (!article.value?.contentMd) return ''
-  let md = article.value.contentMd
-  md = md.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  md = md.replace(/^### (.+)$/gm, '<h3>$1</h3>')
-  md = md.replace(/^## (.+)$/gm, '<h2>$1</h2>')
-  md = md.replace(/^# (.+)$/gm, '<h1>$1</h1>')
-  md = md.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-  md = md.replace(/`([^`]+)`/g, '<code>$1</code>')
-  md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-  md = md.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" />')
-  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-  md = md.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-  md = md.replace(/^- (.+)$/gm, '<li>$1</li>')
-  md = md.replace(/^(\d+)\. (.+)$/gm, '<li>$1. $2</li>')
-  md = md.replace(/\n{2,}/g, '</p><p>')
-  md = '<p>' + md + '</p>'
-  return md
+  return md.render(article.value.contentMd)
 })
 
 const load = async () => {
@@ -130,6 +130,14 @@ const submitComment = async () => {
     msg.value = e.message
     isError.value = true
   }
+}
+
+const doLike = async () => {
+  try {
+    const res = await toggleLike(route.params.id)
+    liked.value = res.liked
+    article.value = await articleDetail(route.params.id)
+  } catch { /* ignore */ }
 }
 
 const submitReply = async (comment) => {
@@ -157,22 +165,25 @@ onMounted(load)
 .back-link {
   display: inline-flex;
   margin-bottom: 18px;
-  color: var(--web-accent-2);
+  color: var(--web-accent);
   font-size: 15px;
-  transition: color .18s ease;
+  transition: all .2s ease;
+  padding: 6px 14px;
+  border-radius: 999px;
 }
-.back-link:hover { color: var(--web-accent); }
+.back-link:hover { color: var(--web-accent-3); background: rgba(240, 140, 160, 0.08); }
 .eyebrow {
   margin: 0 0 12px;
-  font-size: 11px;
-  letter-spacing: .22em;
-  color: var(--web-accent);
+  font-size: 12px;
+  letter-spacing: .18em;
+  color: var(--web-accent-3);
 }
 .article-hero h1 {
   margin: 0;
-  font-size: clamp(38px, 5vw, 72px);
-  line-height: .94;
-  letter-spacing: -.01em;
+  font-family: var(--web-font-display);
+  font-size: clamp(38px, 5vw, 68px);
+  line-height: 1.1;
+  letter-spacing: .03em;
 }
 .summary {
   margin-top: 16px;
@@ -190,17 +201,62 @@ onMounted(load)
   font-size: 14px;
   letter-spacing: .04em;
 }
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid var(--web-line);
+  background: rgba(255,255,255,0.7);
+  color: var(--web-muted);
+  font-size: 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.like-btn:hover:not(:disabled) {
+  border-color: var(--web-accent-3);
+  color: var(--web-accent-3);
+  transform: scale(1.06);
+}
+.like-btn.liked {
+  color: #e8618c;
+  border-color: rgba(232, 97, 140, 0.3);
+  background: rgba(240, 140, 160, 0.08);
+}
+.like-btn:disabled { opacity: .5; cursor: not-allowed; }
+.like-icon { font-size: 16px; transition: transform .2s ease; }
+.like-btn.liked .like-icon { transform: scale(1.2); }
 .hero-line {
   margin-top: 28px;
   width: 48px;
   height: 3px;
   background: var(--web-accent);
 }
+.detail-cover {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  margin-top: 20px;
+  border-radius: var(--web-radius);
+  border: 1px solid var(--web-line);
+}
+.top-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  background: var(--web-accent);
+  color: #fff;
+  border-radius: 3px;
+}
 
 .article-body {
   margin: 32px 0 48px;
   padding: 36px 32px;
   border: 1px solid var(--web-line);
+  border-radius: var(--web-radius);
   background: var(--web-paper);
   box-shadow: var(--web-shadow);
 }
@@ -210,13 +266,14 @@ onMounted(load)
 .content :deep(h3) { font-size: 22px; margin: 24px 0 12px; line-height: 1.25; }
 .content :deep(p) { margin: 0 0 20px; }
 .content :deep(pre) {
-  background: rgba(0,0,0,0.04);
+  background: rgba(74, 144, 217, 0.04);
   padding: 20px 24px;
   overflow-x: auto;
   font-size: 15px;
   line-height: 1.6;
-  border-left: 3px solid var(--web-accent);
+  border-left: 4px solid var(--web-accent);
   margin: 20px 0;
+  border-radius: 0 var(--web-radius) var(--web-radius) 0;
 }
 .content :deep(code) {
   font-family: "Consolas", "Monaco", monospace;
@@ -227,19 +284,22 @@ onMounted(load)
 }
 .content :deep(pre code) { background: none; padding: 0; }
 .content :deep(blockquote) {
-  border-left: 3px solid var(--web-accent-2);
-  padding: 8px 20px;
+  border-left: 4px solid var(--web-accent);
+  padding: 10px 20px;
   margin: 20px 0;
   color: var(--web-muted);
   font-style: italic;
+  background: rgba(74, 144, 217, 0.03);
+  border-radius: 0 var(--web-radius) var(--web-radius) 0;
 }
 .content :deep(li) { margin: 6px 0; }
-.content :deep(a) { color: var(--web-accent-2); text-decoration: underline; }
+.content :deep(a) { color: var(--web-accent); text-decoration: underline; }
 .content :deep(strong) { font-weight: 700; }
 .content :deep(img) { max-width: 100%; margin: 16px 0; }
 
 .comment-card {
   border: 1px solid var(--web-line);
+  border-radius: var(--web-radius);
   background: var(--web-paper);
   box-shadow: var(--web-shadow);
   padding: 32px;
@@ -286,8 +346,8 @@ onMounted(load)
   min-height: 80px;
 }
 .composer textarea:focus {
-  outline: 2px solid rgba(159, 61, 34, 0.18);
-  border-color: rgba(159, 61, 34, 0.32);
+  outline: 2px solid rgba(74, 144, 217, 0.18);
+  border-color: var(--web-accent);
 }
 .composer button { align-self: flex-end; min-width: 100px; }
 
@@ -316,13 +376,13 @@ button {
 button:hover { transform: translateY(-1px); }
 
 .primary-btn {
-  background: var(--web-accent);
-  color: #fff9f3;
-  border-color: var(--web-accent);
+  background: var(--web-accent-3);
+  color: #fff;
+  border-color: var(--web-accent-3);
   font-weight: 700;
-  box-shadow: 0 8px 24px rgba(159, 61, 34, 0.18);
+  box-shadow: 0 6px 20px rgba(240, 140, 160, 0.25);
 }
-.primary-btn:hover { background: var(--web-accent-3); }
+.primary-btn:hover { background: #e47890; transform: scale(1.03); }
 
 .ghost-btn { background: rgba(255,255,255,0.7); color: var(--web-ink); }
 .ghost-btn:hover { background: rgba(255,255,255,0.95); }
@@ -340,9 +400,9 @@ button:hover { transform: translateY(-1px); }
 .comment-body { display: flex; gap: 14px; align-items: flex-start; }
 .comment-left { flex-shrink: 0; }
 .comment-avatar {
-  width: 36px; height: 36px;
+  width: 38px; height: 38px;
   border-radius: 50%;
-  background: var(--web-accent-2);
+  background: linear-gradient(135deg, var(--web-accent), var(--web-accent-3));
   color: #fff;
   font-size: 16px;
   font-weight: 700;

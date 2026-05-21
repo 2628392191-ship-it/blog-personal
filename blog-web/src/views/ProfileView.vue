@@ -41,6 +41,26 @@
       </div>
 
       <p v-if="msg" class="msg" :class="{ error: isError }">{{ msg }}</p>
+
+      <hr class="divider" />
+
+      <h3 class="section-title">修改密码</h3>
+      <div class="fields">
+        <div class="field">
+          <label>原密码</label>
+          <input v-model="pwdForm.oldPassword" type="password" placeholder="输入当前密码" />
+        </div>
+        <div class="field">
+          <label>新密码</label>
+          <input v-model="pwdForm.newPassword" type="password" placeholder="输入新密码" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="ghost-btn" @click="changePwd" :disabled="changingPwd">
+          {{ changingPwd ? '修改中...' : '修改密码' }}
+        </button>
+      </div>
+      <p v-if="pwdMsg" class="msg" :class="{ error: pwdIsError }">{{ pwdMsg }}</p>
     </div>
   </section>
 
@@ -53,16 +73,20 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { updateProfile } from '../api'
+import { changePassword, updateProfile } from '../api'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
 const saving = ref(false)
+const changingPwd = ref(false)
 const msg = ref('')
 const isError = ref(false)
+const pwdMsg = ref('')
+const pwdIsError = ref(false)
 
 const form = reactive({ nickname: '', email: '' })
+const pwdForm = reactive({ oldPassword: '', newPassword: '' })
 
 const avatarLetter = computed(() => {
   const name = auth.user?.nickname || auth.user?.username || 'U'
@@ -75,6 +99,27 @@ onMounted(() => {
     form.email = auth.user.email || ''
   }
 })
+
+const changePwd = async () => {
+  if (!pwdForm.oldPassword || !pwdForm.newPassword) {
+    pwdMsg.value = '请填写原密码和新密码'
+    pwdIsError.value = true
+    return
+  }
+  changingPwd.value = true
+  try {
+    await changePassword({ oldPassword: pwdForm.oldPassword, newPassword: pwdForm.newPassword })
+    pwdForm.oldPassword = ''
+    pwdForm.newPassword = ''
+    pwdMsg.value = '密码已修改'
+    pwdIsError.value = false
+  } catch (e) {
+    pwdMsg.value = e.message
+    pwdIsError.value = true
+  } finally {
+    changingPwd.value = false
+  }
+}
 
 const save = async () => {
   saving.value = true
@@ -104,28 +149,33 @@ const save = async () => {
 .back-link {
   display: inline-flex;
   margin-bottom: 18px;
-  color: var(--web-accent-2);
+  color: var(--web-accent);
   font-size: 15px;
-  transition: color .18s ease;
+  transition: all .2s ease;
+  padding: 6px 14px;
+  border-radius: 999px;
 }
-.back-link:hover { color: var(--web-accent); }
+.back-link:hover { color: var(--web-accent-3); background: rgba(240, 140, 160, 0.08); }
 .eyebrow {
   margin: 0 0 12px;
-  font-size: 11px;
-  letter-spacing: .22em;
-  color: var(--web-accent);
+  font-size: 12px;
+  letter-spacing: .18em;
+  color: var(--web-accent-3);
 }
 .profile-hero h1 {
   margin: 0;
+  font-family: var(--web-font-display);
   font-size: clamp(38px, 5vw, 56px);
-  line-height: .94;
+  line-height: 1.1;
+  letter-spacing: .03em;
 }
 .sub { margin: 12px 0 0; color: var(--web-muted); font-size: 16px; }
-.hero-line { margin-top: 24px; width: 48px; height: 3px; background: var(--web-accent); }
+.hero-line { margin-top: 24px; width: 48px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--web-accent-3), var(--web-accent)); }
 
 .profile-card {
   padding: 36px 32px;
   border: 1px solid var(--web-line);
+  border-radius: var(--web-radius);
   background: var(--web-paper);
   box-shadow: var(--web-shadow);
 }
@@ -141,7 +191,7 @@ const save = async () => {
 .avatar-placeholder {
   width: 72px; height: 72px;
   border-radius: 50%;
-  background: var(--web-accent-2);
+  background: linear-gradient(135deg, var(--web-accent), var(--web-accent-3));
   color: #fff;
   font-size: 32px;
   font-weight: 700;
@@ -170,8 +220,9 @@ const save = async () => {
   transition: border-color .18s ease;
 }
 .field input:focus {
-  outline: 2px solid rgba(159, 61, 34, 0.18);
-  border-color: rgba(159, 61, 34, 0.32);
+  outline: 2px solid rgba(74, 144, 217, 0.18);
+  border-color: var(--web-accent);
+  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.06);
 }
 .field input:disabled {
   opacity: .55;
@@ -183,19 +234,34 @@ const save = async () => {
 .actions { margin-top: 28px; display: flex; justify-content: flex-end; }
 .primary-btn {
   padding: 14px 28px;
-  background: var(--web-accent);
-  color: #fff9f3;
+  background: var(--web-accent-3);
+  color: #fff;
   border: none;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
-  border-radius: var(--web-radius);
-  transition: all .18s ease;
-  box-shadow: 0 8px 24px rgba(159, 61, 34, 0.18);
+  border-radius: 999px;
+  transition: all .22s ease;
+  box-shadow: 0 6px 20px rgba(240, 140, 160, 0.25);
 }
-.primary-btn:hover:not(:disabled) { background: var(--web-accent-3); }
+.primary-btn:hover:not(:disabled) { background: #e47890; transform: scale(1.03); }
 .primary-btn:disabled { opacity: .5; cursor: not-allowed; }
 
+.divider { margin: 32px 0 24px; border: none; border-top: 1px solid var(--web-line); }
+.section-title { margin: 0 0 16px; font-size: 18px; color: var(--web-ink); }
+.ghost-btn {
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.7);
+  color: var(--web-ink);
+  border: 1px solid var(--web-line);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--web-radius);
+  transition: all .18s ease;
+}
+.ghost-btn:hover:not(:disabled) { background: rgba(0,0,0,0.04); }
+.ghost-btn:disabled { opacity: .5; cursor: not-allowed; }
 .msg { margin: 16px 0 0; font-size: 14px; color: var(--web-accent-2); }
 .msg.error { color: #c0392b; }
 

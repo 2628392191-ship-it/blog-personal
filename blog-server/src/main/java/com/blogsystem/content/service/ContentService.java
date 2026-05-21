@@ -7,9 +7,11 @@ import com.blogsystem.content.dto.ArticleSaveRequest;
 import com.blogsystem.content.dto.CategorySaveRequest;
 import com.blogsystem.content.dto.TagSaveRequest;
 import com.blogsystem.content.entity.Article;
+import com.blogsystem.content.entity.ArticleLike;
 import com.blogsystem.content.entity.ArticleTag;
 import com.blogsystem.content.entity.Category;
 import com.blogsystem.content.entity.Tag;
+import com.blogsystem.content.mapper.ArticleLikeMapper;
 import com.blogsystem.content.mapper.ArticleMapper;
 import com.blogsystem.content.mapper.ArticleTagMapper;
 import com.blogsystem.content.mapper.CategoryMapper;
@@ -18,8 +20,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vladsch.flexmark.html.HtmlRenderer;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.data.MutableDataSet;
+
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +34,7 @@ public class ContentService {
 
     private final ArticleMapper articleMapper;
     private final ArticleTagMapper articleTagMapper;
+    private final ArticleLikeMapper articleLikeMapper;
     private final CategoryMapper categoryMapper;
     private final TagMapper tagMapper;
 
@@ -55,6 +63,7 @@ public class ContentService {
         article.setTitle(request.title());
         article.setSummary(request.summary());
         article.setContentMd(request.contentMd());
+        article.setContentHtml(mdToHtml(request.contentMd()));
         article.setCoverUrl(request.coverUrl());
         article.setCategoryId(request.categoryId());
         article.setStatus(request.status());
@@ -83,12 +92,7 @@ public class ContentService {
     }
 
     /**
-     * 文章分页查询
-     * @param status
-     * @param categoryId
-     * @param pageNum
-     * @param pageSize
-     * @return
+     * 文章分页查询，结果附带分类名称和标签名称
      */
     public Page<Article> listArticles(Integer status, Long categoryId, Long tagId, long pageNum, long pageSize) {
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
@@ -102,7 +106,35 @@ public class ContentService {
         if (tagId != null) {
             wrapper.inSql(Article::getId, "select article_id from article_tag where tag_id = " + tagId);
         }
-        return articleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        Page<Article> page = articleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<Article> records = page.getRecords();
+        if (records.isEmpty()) {
+            return page;
+        }
+
+        Set<Long> categoryIds = records.stream().map(Article::getCategoryId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> categoryNameMap = categoryIds.isEmpty() ? Map.of() :
+                categoryMapper.selectBatchIds(categoryIds).stream()
+                        .collect(Collectors.toMap(Category::getId, c -> c.getName() != null ? c.getName() : ""));
+
+        Set<Long> articleIds = records.stream().map(Article::getId).collect(Collectors.toSet());
+        List<ArticleTag> allMappings = articleTagMapper.selectList(
+                new LambdaQueryWrapper<ArticleTag>().in(ArticleTag::getArticleId, articleIds));
+        Map<Long, List<Long>> articleTagIdMap = allMappings.stream()
+                .collect(Collectors.groupingBy(ArticleTag::getArticleId,
+                        Collectors.mapping(ArticleTag::getTagId, Collectors.toList())));
+
+        Set<Long> allTagIds = allMappings.stream().map(ArticleTag::getTagId).collect(Collectors.toSet());
+        Map<Long, String> tagNameMap = allTagIds.isEmpty() ? Map.of() :
+                tagMapper.selectBatchIds(allTagIds).stream()
+                        .collect(Collectors.toMap(Tag::getId, t -> t.getName() != null ? t.getName() : ""));
+
+        for (Article a : records) {
+            a.setCategoryName(categoryNameMap.get(a.getCategoryId()));
+            List<Long> tagIdsForArticle = articleTagIdMap.getOrDefault(a.getId(), List.of());
+            a.setTagNames(tagIdsForArticle.stream().map(tagNameMap::get).filter(Objects::nonNull).collect(Collectors.toList()));
+        }
+        return page;
     }
 
     /**
@@ -135,13 +167,15 @@ public class ContentService {
     }
 
     /**
-     * 删除一篇文章
+     * 删除一篇文章（利用 MyBatis-Plus 逻辑删除）
      * @param id
      */
     public void deleteArticle(Long id) {
-        Article article = getArticle(id);
-        article.setDeleted(1);
-        articleMapper.updateById(article);
+        Article article = articleMapper.selectById(id);
+        if (article == null) {
+            throw new IllegalArgumentException("文章不存在");
+        }
+        articleMapper.deleteById(id);
     }
 
     /**
@@ -183,11 +217,10 @@ public class ContentService {
      */
     public void deleteCategory(Long id) {
         Category category = categoryMapper.selectById(id);
-        if (category == null || category.getDeleted() == 1) {
+        if (category == null) {
             throw new IllegalArgumentException("分类不存在");
         }
-        category.setDeleted(1);
-        categoryMapper.updateById(category);
+        categoryMapper.deleteById(id);
     }
 
     /**
@@ -223,16 +256,57 @@ public class ContentService {
                 .orderByAsc(Tag::getSort).orderByDesc(Tag::getId));
     }
 
+    private static final Parser MD_PARSER;
+    private static final HtmlRenderer MD_RENDERER;
+    static {
+        MutableDataSet options = new MutableDataSet();
+        MD_PARSER = Parser.builder(options).build();
+        MD_RENDERER = HtmlRenderer.builder(options).build();
+    }
+
+    private String mdToHtml(String markdown) {
+        if (markdown == null || markdown.isEmpty()) return "";
+        return MD_RENDERER.render(MD_PARSER.parse(markdown));
+    }
+
+    /**
+     * 切换文章点赞，返回当前是否已点赞
+     */
+    @Transactional
+    public boolean toggleLike(Long articleId) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        Article article = articleMapper.selectById(articleId);
+        if (article == null || article.getDeleted() == 1) {
+            throw new IllegalArgumentException("文章不存在");
+        }
+        ArticleLike exist = articleLikeMapper.selectOne(new LambdaQueryWrapper<ArticleLike>()
+                .eq(ArticleLike::getArticleId, articleId)
+                .eq(ArticleLike::getUserId, userId)
+                .last("limit 1"));
+        if (exist != null) {
+            articleLikeMapper.deleteById(exist.getId());
+            article.setLikeCount(Math.max(0, (article.getLikeCount() == null ? 0 : article.getLikeCount()) - 1));
+            articleMapper.updateById(article);
+            return false;
+        }
+        ArticleLike like = new ArticleLike();
+        like.setArticleId(articleId);
+        like.setUserId(userId);
+        articleLikeMapper.insert(like);
+        article.setLikeCount((article.getLikeCount() == null ? 0 : article.getLikeCount()) + 1);
+        articleMapper.updateById(article);
+        return true;
+    }
+
     /**
      * 删除标签
      * @param id
      */
     public void deleteTag(Long id) {
         Tag tag = tagMapper.selectById(id);
-        if (tag == null || tag.getDeleted() == 1) {
+        if (tag == null) {
             throw new IllegalArgumentException("标签不存在");
         }
-        tag.setDeleted(1);
-        tagMapper.updateById(tag);
+        tagMapper.deleteById(id);
     }
 }

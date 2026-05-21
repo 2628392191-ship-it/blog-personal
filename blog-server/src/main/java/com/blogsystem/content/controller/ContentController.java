@@ -127,4 +127,14 @@ public class ContentController {
         contentService.deleteTag(id);
         return ApiResponse.ok();
     }
+
+    /**
+     * 切换文章点赞（需登录）
+     */
+    @SaCheckLogin
+    @PostMapping("/article/{id}/like")
+    public ApiResponse<Map<String, Object>> toggleLike(@PathVariable Long id) {
+        boolean liked = contentService.toggleLike(id);
+        return ApiResponse.ok(Map.of("liked", liked));
+    }
 }

@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS article (
     title VARCHAR(200) NOT NULL,
     summary VARCHAR(500) DEFAULT NULL,
     content_md LONGTEXT NOT NULL,
+    content_html LONGTEXT DEFAULT NULL,
     cover_url VARCHAR(255) DEFAULT NULL,
     category_id BIGINT DEFAULT NULL,
     status TINYINT NOT NULL DEFAULT 0,
@@ -129,6 +130,13 @@ CREATE TABLE IF NOT EXISTS article_tag (
     article_id BIGINT NOT NULL,
     tag_id BIGINT NOT NULL,
     UNIQUE KEY uk_article_tag (article_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS article_like (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    article_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    UNIQUE KEY uk_article_user (article_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS comment (
@@ -191,3 +199,6 @@ FROM sys_role r
          JOIN sys_permission p ON p.perm_code IN ('admin:user:list', 'comment:admin:list', 'comment:admin:audit', 'comment:admin:delete')
 WHERE r.role_code = 'ADMIN'
 ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);
+
+-- 增量 DDL（已有数据库执行）
+-- ALTER TABLE article ADD COLUMN content_html LONGTEXT DEFAULT NULL AFTER content_md;

@@ -3,6 +3,7 @@ package com.blogsystem.auth.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.blogsystem.auth.dto.LoginUserVO;
 import com.blogsystem.auth.dto.PhoneCodeAuthRequest;
+import com.blogsystem.auth.dto.PasswordUpdateRequest;
 import com.blogsystem.auth.dto.ProfileUpdateRequest;
 import com.blogsystem.auth.dto.SendSmsCodeRequest;
 import com.blogsystem.auth.service.AuthService;
@@ -66,6 +67,16 @@ public class AuthController {
     public ApiResponse<LoginUserVO> updateProfile(@RequestBody @Valid ProfileUpdateRequest request) {
         Long userId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
         return ApiResponse.ok(authService.updateProfile(userId, request.nickname(), request.email(), request.avatar()));
+    }
+
+    /**
+     * 修改密码
+     */
+    @SaCheckLogin
+    @PutMapping("/password")
+    public ApiResponse<Void> changePassword(@RequestBody @Valid PasswordUpdateRequest request) {
+        authService.changePassword(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), request.oldPassword(), request.newPassword());
+        return ApiResponse.ok();
     }
 
     /**

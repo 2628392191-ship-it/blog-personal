@@ -135,6 +135,21 @@ public class AuthService {
     }
 
     /**
+     * 修改密码
+     */
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null || user.getDeleted() == 1) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        if (!user.getPassword().equals(md5(oldPassword))) {
+            throw new IllegalArgumentException("原密码错误");
+        }
+        user.setPassword(md5(newPassword));
+        sysUserMapper.updateById(user);
+    }
+
+    /**
      * 退出登录
      */
     public void logout() {

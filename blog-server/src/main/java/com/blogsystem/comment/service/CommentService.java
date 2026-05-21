@@ -103,10 +103,9 @@ public class CommentService {
      */
     public void adminDelete(Long id) {
         Comment comment = commentMapper.selectById(id);
-        if (comment == null || comment.getDeleted() == 1) {
+        if (comment == null) {
             throw new IllegalArgumentException("评论不存在");
         }
-        comment.setDeleted(1);
-        commentMapper.updateById(comment);
+        commentMapper.deleteById(id);
     }
 }

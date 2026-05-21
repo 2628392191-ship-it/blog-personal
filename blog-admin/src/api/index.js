@@ -17,6 +17,7 @@ export const deleteTag = (id) => http.delete(`/api/content/tag/${id}`)
 
 export const listAdminComments = (pageNum = 1, pageSize = 10, status) => http.get('/api/comment/admin/list', { params: { pageNum, pageSize, status } })
 export const auditComment = (id, status) => http.post(`/api/comment/admin/${id}/audit`, null, { params: { status } })
+export const deleteComment = (id) => http.delete(`/api/comment/admin/${id}`)
 
 export const listUsers = (pageNum = 1, pageSize = 10, status) => http.get('/api/admin/users', { params: { pageNum, pageSize, status } })
 export const updateUserStatus = (id, status) => http.put(`/api/admin/users/${id}/status`, null, { params: { status } })

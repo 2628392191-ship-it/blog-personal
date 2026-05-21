@@ -2,9 +2,9 @@
   <section class="page">
     <header class="hero">
       <p class="eyebrow">ESSAYS &amp; NOTES</p>
-      <h1>写给长期主义者</h1>
+      <h1>致长期主义者</h1>
       <p class="hero-sub">
-        这里放技术拆解、系统设计、开发日志和不急着发到社交平台的长文本。
+        这里分享个人在技术学习、系统涉及、开发历程的文章。
       </p>
       <div class="hero-line"></div>
     </header>
@@ -16,7 +16,7 @@
     <div v-else class="layout-with-sidebar">
       <aside class="sidebar" v-if="categories.length > 0">
         <nav class="category-nav">
-          <h3 class="sidebar-title">分类阅读</h3>
+          <h3 class="sidebar-title">分类</h3>
           <ul class="category-list">
             <li
               class="category-item"
@@ -40,7 +40,7 @@
       </aside>
 
       <div class="main-area">
-        <section v-if="!activeCategoryId && hotList.length > 0" class="hot-section">
+        <section v-if="!activeCategoryId && !activeTagId && hotList.length > 0" class="hot-section">
           <div class="section-head">
             <div>
               <p class="section-eyebrow">HOT READS</p>
@@ -51,12 +51,16 @@
           <div class="hot-grid">
             <article v-for="item in hotList" :key="`hot-${item.id}`" class="hot-card">
               <p class="hot-meta">
-                <span>{{ categoryName(item.categoryId) }}</span>
+                <span>
+                  <span v-if="item.isTop" class="top-badge">置顶</span>
+                  {{ categoryName(item.categoryId) }}
+                </span>
                 <span>阅读 {{ item.viewCount || 0 }}</span>
               </p>
               <h3>
                 <router-link :to="`/article/${item.id}`">{{ item.title }}</router-link>
               </h3>
+              <img v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" alt="cover" />
               <p class="hot-summary">{{ item.summary || '这篇文章还没有摘要，点击进入查看完整内容。' }}</p>
               <router-link class="read-more" :to="`/article/${item.id}`">
                 继续阅读 <span class="arrow">&rarr;</span>
@@ -69,7 +73,7 @@
           <div class="section-head compact">
             <div>
               <p class="section-eyebrow">CURRENT FEED</p>
-              <h2>{{ activeCategoryId ? categoryName(activeCategoryId) : '全部文章' }}</h2>
+              <h2>{{ activeCategoryId ? categoryName(activeCategoryId) : activeTagId ? '#' + tagMap[activeTagId] : '全部文章' }}</h2>
             </div>
             <span class="section-hint">{{ list.length }} 篇可读内容</span>
           </div>
@@ -82,12 +86,14 @@
               <div class="card-body">
                 <div class="meta-row">
                   <span class="meta-date">{{ item.publishTime || '待发布' }}</span>
+                  <span v-if="item.isTop" class="top-badge">置顶</span>
                   <span class="meta-cat">{{ categoryName(item.categoryId) }}</span>
                   <span class="meta-views">阅读 {{ item.viewCount || 0 }}</span>
                 </div>
                 <h2>
                   <router-link :to="`/article/${item.id}`">{{ item.title }}</router-link>
                 </h2>
+                <img v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" alt="cover" />
                 <p class="card-summary">{{ item.summary || '这篇文章还没有摘要，点击进入查看完整内容。' }}</p>
                 <router-link class="read-more" :to="`/article/${item.id}`">
                   继续阅读
@@ -229,15 +235,21 @@ onMounted(async () => {
 .hero { margin-bottom: 48px; max-width: 960px; }
 .eyebrow {
   margin: 0 0 18px;
-  font-size: 12px;
-  letter-spacing: .24em;
-  color: var(--web-accent);
+  font-size: 13px;
+  letter-spacing: .20em;
+  color: var(--web-accent-3);
+  font-weight: 600;
 }
 .hero h1 {
   margin: 0;
+  font-family: var(--web-font-display);
   font-size: clamp(48px, 7vw, 96px);
-  line-height: .92;
-  letter-spacing: -.02em;
+  line-height: 1.1;
+  letter-spacing: .04em;
+  background: linear-gradient(135deg, var(--web-accent) 0%, var(--web-accent-3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .hero-sub {
   margin: 20px 0 0;
@@ -249,8 +261,9 @@ onMounted(async () => {
 .hero-line {
   margin-top: 32px;
   width: 60px;
-  height: 3px;
-  background: var(--web-accent);
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--web-accent-3), var(--web-accent));
 }
 
 .section-head {
@@ -265,12 +278,14 @@ onMounted(async () => {
   margin: 0 0 6px;
   font-size: 11px;
   letter-spacing: .22em;
-  color: var(--web-accent-2);
+  color: var(--web-accent-3);
 }
 .section-head h2 {
   margin: 0;
+  font-family: var(--web-font-display);
   font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.05;
+  line-height: 1.1;
+  color: var(--web-accent);
 }
 .section-hint { color: var(--web-muted); font-size: 14px; }
 
@@ -291,10 +306,10 @@ onMounted(async () => {
 
 .sidebar-title {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-family: var(--web-font-display);
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: .10em;
-  color: var(--web-accent);
+  color: var(--web-accent-3);
 }
 
 .category-list {
@@ -307,34 +322,35 @@ onMounted(async () => {
 }
 
 .category-item {
-  padding: 8px 12px;
-  border-radius: var(--web-radius);
+  padding: 8px 14px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--web-muted);
-  transition: all .18s ease;
-  border-left: 2px solid transparent;
+  transition: all .22s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-weight: 500;
 }
 
 .category-item:hover {
-  background: rgba(47, 93, 80, 0.06);
-  color: var(--web-ink);
+  background: rgba(74, 144, 217, 0.08);
+  color: var(--web-accent);
+  transform: translateX(3px);
 }
 
 .category-item.active {
-  background: rgba(47, 93, 80, 0.08);
-  color: var(--web-accent-2);
-  border-left-color: var(--web-accent-2);
-  font-weight: 600;
+  background: linear-gradient(135deg, rgba(74, 144, 217, 0.12), rgba(240, 140, 160, 0.10));
+  color: var(--web-accent);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(74, 144, 217, 0.10);
 }
 
 .item-count {
   font-size: 12px;
   color: var(--web-muted);
-  background: rgba(0,0,0,0.04);
+  background: rgba(74, 144, 217, 0.08);
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 400;
@@ -350,16 +366,24 @@ onMounted(async () => {
 .hot-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   max-width: 640px;
 }
 .hot-card {
-  padding: 24px 22px;
+  padding: 24px 24px;
   background: var(--web-paper);
   border: 1px solid var(--web-line);
+  border-left: 4px solid var(--web-accent-3);
+  border-radius: var(--web-radius);
   box-shadow: var(--web-shadow);
   display: flex;
   flex-direction: column;
+  transition: all .25s ease;
+}
+.hot-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--web-shadow-lg);
+  border-color: var(--web-accent-3);
 }
 .hot-meta {
   display: flex;
@@ -372,9 +396,9 @@ onMounted(async () => {
 .hot-card h3 {
   margin: 0 0 10px;
   font-size: 22px;
-  line-height: 1.2;
+  line-height: 1.3;
 }
-.hot-card h3 a:hover { color: var(--web-accent); }
+.hot-card h3 a:hover { color: var(--web-accent-3); }
 .hot-summary {
   margin: 0 0 auto;
   color: var(--web-muted);
@@ -394,12 +418,32 @@ onMounted(async () => {
   font-weight: 700;
   color: var(--web-accent-2);
 }
-.hot-card .read-more:hover { color: var(--web-accent); }
+.hot-card .read-more:hover { color: var(--web-accent-3); }
 .hot-card .read-more .arrow {
   display: inline-block;
-  transition: transform .22s ease;
+  transition: transform .25s ease;
 }
 .hot-card:hover .read-more .arrow { transform: translateX(4px); }
+
+.top-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  background: var(--web-accent);
+  color: #fff;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.card-cover {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  margin: 10px 0;
+  border-radius: var(--web-radius);
+  border: 1px solid var(--web-line);
+}
 
 .section-head-right {
   display: flex;
@@ -439,52 +483,57 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: 60px 1fr;
   gap: 20px;
-  padding: 32px 0;
-  border-top: 1px solid var(--web-line);
-  transition: transform .22s ease, border-color .22s ease;
+  padding: 28px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--web-radius);
+  background: var(--web-paper);
+  box-shadow: var(--web-shadow);
+  margin-bottom: 12px;
+  transition: all .25s ease;
 }
-.card:last-of-type { border-bottom: 1px solid var(--web-line); }
-.card:hover { transform: translateX(6px); }
-.card:hover .read-more .arrow { transform: translateX(4px); }
+.card:hover {
+  transform: translateX(4px);
+  border-color: var(--web-accent-3);
+  box-shadow: var(--web-shadow-lg);
+}
 
 .card-index { padding-top: 2px; }
 .index-num {
   font-size: 18px;
-  color: var(--web-muted);
-  font-style: italic;
+  color: var(--web-accent);
+  font-family: var(--web-font-display);
 }
 
 .meta-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.meta-date, .meta-views { font-size: 13px; color: var(--web-muted); letter-spacing: .06em; }
+.meta-date, .meta-views { font-size: 13px; color: var(--web-muted); }
 .meta-cat {
   font-size: 12px;
-  color: var(--web-accent-2);
-  letter-spacing: .08em;
+  color: var(--web-accent);
+  font-weight: 600;
   padding: 3px 12px;
-  border: 1px solid rgba(47, 93, 80, 0.22);
+  background: rgba(74, 144, 217, 0.08);
   border-radius: 999px;
 }
 
 .card h2 {
-  margin: 0 0 12px;
-  font-size: clamp(28px, 3.5vw, 44px);
-  line-height: 1.08;
-  letter-spacing: -.01em;
+  margin: 0 0 10px;
+  font-size: clamp(26px, 3.5vw, 40px);
+  line-height: 1.2;
 }
-.card h2 a { transition: color .18s ease; }
-.card h2 a:hover { color: var(--web-accent); }
+.card h2 a { transition: color .2s ease; }
+.card h2 a:hover { color: var(--web-accent-3); }
 
 .card-summary {
   margin: 0;
   color: var(--web-muted);
-  font-size: 16px;
-  line-height: 1.75;
+  font-size: 15px;
+  line-height: 1.7;
   max-width: 58ch;
 }
 
@@ -492,42 +541,44 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 16px;
-  font-size: 15px;
+  margin-top: 14px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--web-accent-2);
-  transition: color .18s ease;
+  color: var(--web-accent);
+  transition: color .2s ease;
 }
 .read-more .arrow {
   display: inline-block;
-  transition: transform .22s ease;
+  transition: transform .25s ease;
 }
-.read-more:hover { color: var(--web-accent); }
+.read-more:hover { color: var(--web-accent-3); }
+.card:hover .read-more .arrow { transform: translateX(4px); }
 
 .pager {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   margin-top: 48px;
 }
 .pager button {
-  padding: 12px 20px;
+  padding: 10px 22px;
   border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.80);
   color: var(--web-ink);
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
-  border-radius: var(--web-radius);
-  transition: all .18s ease;
+  border-radius: 999px;
+  transition: all .22s ease;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .pager button:hover:not(:disabled) {
-  background: var(--web-accent);
-  color: #fff9f3;
-  border-color: var(--web-accent);
+  background: var(--web-accent-3);
+  color: #fff;
+  border-color: var(--web-accent-3);
+  transform: scale(1.04);
 }
 .pager button:disabled { opacity: .35; cursor: not-allowed; }
 .pager-info { font-size: 14px; color: var(--web-muted); }
@@ -557,17 +608,11 @@ onMounted(async () => {
     gap: 6px;
   }
   .category-item {
-    border-left: none;
-    border-bottom: 2px solid transparent;
-    padding: 6px 10px;
+    padding: 6px 12px;
     font-size: 13px;
   }
-  .category-item.active {
-    border-left-color: transparent;
-    border-bottom-color: var(--web-accent-2);
-  }
   .item-count { display: none; }
-  .sidebar-title { margin-bottom: 10px; font-size: 13px; }
+  .sidebar-title { margin-bottom: 10px; font-size: 14px; }
 }
 
 @media (max-width: 720px) {

@@ -1,7 +1,7 @@
 package com.blogsystem.comment.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blogsystem.comment.dto.CommentSaveRequest;
 import com.blogsystem.comment.dto.CommentVO;
@@ -48,7 +48,7 @@ public class CommentController {
     /**
      * 管理端评论分页查询，支持按状态筛选
      */
-    @SaCheckRole("ADMIN")
+    @SaCheckPermission("comment:admin:list")
     @GetMapping("/admin/list")
     public ApiResponse<Page<Comment>> adminList(@RequestParam(required = false) Integer status,
                                                 @RequestParam(defaultValue = "1") Long pageNum,
@@ -59,7 +59,7 @@ public class CommentController {
     /**
      * 管理端审核评论（通过 / 隐藏）
      */
-    @SaCheckRole("ADMIN")
+    @SaCheckPermission("comment:admin:audit")
     @PostMapping("/admin/{id}/audit")
     public ApiResponse<Void> adminAudit(@PathVariable Long id, @RequestParam Integer status) {
         commentService.adminAudit(id, status);
@@ -69,7 +69,7 @@ public class CommentController {
     /**
      * 管理端删除评论（软删除）
      */
-    @SaCheckRole("ADMIN")
+    @SaCheckPermission("comment:admin:delete")
     @DeleteMapping("/admin/{id}")
     public ApiResponse<Void> adminDelete(@PathVariable Long id) {
         commentService.adminDelete(id);

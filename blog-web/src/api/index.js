@@ -15,6 +15,11 @@ export const articleDetail = (id) => http.get(`/api/content/article/${id}`)
 
 export const updateProfile = (payload) => http.put('/api/auth/profile', payload)
 export const changePassword = (payload) => http.put('/api/auth/password', payload)
+export const uploadFile = (file) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return http.post('/api/file/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
 
 export const toggleLike = (id) => http.post(`/api/content/article/${id}/like`)
 

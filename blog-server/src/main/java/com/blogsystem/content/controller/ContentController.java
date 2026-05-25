@@ -1,10 +1,12 @@
 package com.blogsystem.content.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.blogsystem.common.ApiResponse;
 import com.blogsystem.content.dto.ArticleSaveRequest;
 import com.blogsystem.content.dto.CategorySaveRequest;
+import com.blogsystem.log.annotation.OpLog;
 import com.blogsystem.content.dto.TagSaveRequest;
 import com.blogsystem.content.entity.Article;
 import com.blogsystem.content.entity.Category;
@@ -30,7 +32,8 @@ public class ContentController {
     /**
      * 新增 / 更新文章（需登录）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:article:write")
+    @OpLog(module = "文章管理", action = "新增/更新文章")
     @PostMapping("/article")
     public ApiResponse<Map<String, Long>> saveArticle(@RequestBody @Valid ArticleSaveRequest request) {
         return ApiResponse.ok(Map.of("id", contentService.saveArticle(request)));
@@ -67,7 +70,8 @@ public class ContentController {
     /**
      * 删除文章（需登录，软删除）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:article:delete")
+    @OpLog(module = "文章管理", action = "删除文章")
     @DeleteMapping("/article/{id}")
     public ApiResponse<Void> deleteArticle(@PathVariable Long id) {
         contentService.deleteArticle(id);
@@ -77,7 +81,8 @@ public class ContentController {
     /**
      * 新增 / 更新分类（需登录）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:category:write")
+    @OpLog(module = "分类管理", action = "新增/更新分类")
     @PostMapping("/category")
     public ApiResponse<Map<String, Long>> saveCategory(@RequestBody @Valid CategorySaveRequest request) {
         return ApiResponse.ok(Map.of("id", contentService.saveCategory(request)));
@@ -94,7 +99,8 @@ public class ContentController {
     /**
      * 删除分类（需登录，软删除）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:category:delete")
+    @OpLog(module = "分类管理", action = "删除分类")
     @DeleteMapping("/category/{id}")
     public ApiResponse<Void> deleteCategory(@PathVariable Long id) {
         contentService.deleteCategory(id);
@@ -104,7 +110,8 @@ public class ContentController {
     /**
      * 新增 / 更新标签（需登录）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:tag:write")
+    @OpLog(module = "标签管理", action = "新增/更新标签")
     @PostMapping("/tag")
     public ApiResponse<Map<String, Long>> saveTag(@RequestBody @Valid TagSaveRequest request) {
         return ApiResponse.ok(Map.of("id", contentService.saveTag(request)));
@@ -121,7 +128,8 @@ public class ContentController {
     /**
      * 删除标签（需登录，软删除）
      */
-    @SaCheckLogin
+    @SaCheckPermission("content:tag:delete")
+    @OpLog(module = "标签管理", action = "删除标签")
     @DeleteMapping("/tag/{id}")
     public ApiResponse<Void> deleteTag(@PathVariable Long id) {
         contentService.deleteTag(id);

@@ -52,7 +52,8 @@
           <li v-for="c in comments" :key="c.id" class="comment-item">
             <div class="comment-body">
               <div class="comment-left">
-                <span class="comment-avatar">{{ (c.nickname || '用户')[0] }}</span>
+                <img v-if="c.avatar" :src="c.avatar" class="comment-avatar-img" />
+                <span v-else class="comment-avatar">{{ (c.nickname || '用户')[0] }}</span>
               </div>
               <div class="comment-main">
                 <div class="comment-meta">
@@ -295,7 +296,7 @@ onMounted(load)
 .content :deep(li) { margin: 6px 0; }
 .content :deep(a) { color: var(--web-accent); text-decoration: underline; }
 .content :deep(strong) { font-weight: 700; }
-.content :deep(img) { max-width: 100%; margin: 16px 0; }
+.content :deep(img) { max-width: 100%; height: auto; margin: 20px 0; border-radius: 6px; display: block; }
 
 .comment-card {
   border: 1px solid var(--web-line);
@@ -409,6 +410,13 @@ button:hover { transform: translateY(-1px); }
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+}
+.comment-avatar-img {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 .comment-main { flex: 1; min-width: 0; }
 .comment-meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }

@@ -4,6 +4,21 @@ spring:
     username: root
     password: ljr040209.
     driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 192.168.233.145
+      port: 6380
+      database: 10
+  ai:
+    dashscope:
+      api-key: sk-b7b3fb1052354fa59a34816df1e0306d
+      chat:
+        options:
+          model: qwen-max
 
 sa-token:
   jwt-secret-key: blog-system-secret-key-change-me
+
+blog:
+  upload:
+    dir: C:/Users/刘家瑞/desktop/计科学习/blog-system/uploads

@@ -2,7 +2,6 @@
   <section class="page">
     <header class="hero">
       <p class="eyebrow">ESSAYS &amp; NOTES</p>
-      <h1>致长期主义者</h1>
       <p class="hero-sub">
         这里分享个人在技术学习、系统涉及、开发历程的文章。
       </p>

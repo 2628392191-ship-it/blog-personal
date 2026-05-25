@@ -27,7 +27,22 @@
           <span class="nav-icon">&#9787;</span>
           <span>用户管理</span>
         </router-link>
+        <router-link to="/logs" class="nav-item" active-class="nav-item--active">
+          <span class="nav-icon">&#9776;</span>
+          <span>操作日志</span>
+        </router-link>
       </nav>
+
+      <div class="sidebar-user" v-if="auth.user">
+        <div class="user-avatar">
+          <img v-if="auth.user.avatar" :src="auth.user.avatar" alt="avatar" />
+          <span v-else class="avatar-placeholder">{{ (auth.user.nickname || auth.user.username || 'A')[0] }}</span>
+        </div>
+        <div class="user-info">
+          <span class="user-name">{{ auth.user.nickname || auth.user.username }}</span>
+          <span class="user-role">管理员</span>
+        </div>
+      </div>
 
       <div class="sidebar-foot">
         <button class="theme-toggle" @click="toggleTheme">
@@ -74,6 +89,7 @@ const handleLogout = () => {
 
 onMounted(() => {
   applyTheme(localStorage.getItem(THEME_KEY) || 'light')
+  if (auth.isLoggedIn && !auth.user) auth.fetchMe()
 })
 </script>
 
@@ -212,6 +228,39 @@ img { max-width: 100%; display: block; }
   font-weight: 600;
 }
 .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+/* ---- User profile in sidebar ---- */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--admin-line);
+}
+.user-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-avatar img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.avatar-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--admin-accent), var(--admin-accent-2));
+  color: #fff;
+  font-size: 15px; font-weight: 700;
+}
+.user-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.user-name {
+  font-size: 14px; font-weight: 600; color: var(--admin-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.user-role { font-size: 11px; color: var(--admin-muted); letter-spacing: .04em; }
 
 .sidebar-foot {
   display: flex;

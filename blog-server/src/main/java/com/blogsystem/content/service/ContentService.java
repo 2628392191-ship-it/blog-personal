@@ -17,6 +17,8 @@ import com.blogsystem.content.mapper.ArticleTagMapper;
 import com.blogsystem.content.mapper.CategoryMapper;
 import com.blogsystem.content.mapper.TagMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContentService {
@@ -37,12 +40,14 @@ public class ContentService {
     private final ArticleLikeMapper articleLikeMapper;
     private final CategoryMapper categoryMapper;
     private final TagMapper tagMapper;
+    private final StringRedisTemplate redisTemplate;
 
-    /**
-     * 添加一篇文章
-     * @param request
-     * @return
-     */
+    private static final String HOT_ZSET = "cache:hotArticles";
+
+    private void clearHotCache() {
+        redisTemplate.delete(HOT_ZSET);
+    }
+
     @Transactional
     public Long saveArticle(ArticleSaveRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
@@ -88,12 +93,10 @@ public class ContentService {
                 articleTagMapper.insert(articleTag);
             }
         }
+        clearHotCache();
         return article.getId();
     }
 
-    /**
-     * 文章分页查询，结果附带分类名称和标签名称
-     */
     public Page<Article> listArticles(Integer status, Long categoryId, Long tagId, long pageNum, long pageSize) {
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
                 .orderByDesc(Article::getIsTop).orderByDesc(Article::getPublishTime).orderByDesc(Article::getId);
@@ -137,52 +140,55 @@ public class ContentService {
         return page;
     }
 
-    /**
-     * 热门文章展示
-     * @param limit
-     * @return
-     */
+    //TODO::当前做法是将热门文章根据阅读量缓存id，依旧是查询DB
     public List<Article> listHotArticles(long limit) {
-        return articleMapper.selectList(new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
+        // 从 ZSet 取 top N 的 article ID，按 viewCount 降序
+        Set<String> topIds = redisTemplate.opsForZSet().reverseRange(HOT_ZSET, 0, limit - 1);
+        if (topIds != null && !topIds.isEmpty()) {
+            List<Long> ids = topIds.stream().map(Long::valueOf).collect(Collectors.toList());
+            List<Article> articles = articleMapper.selectBatchIds(ids);
+            // 按 viewCount 降序排列
+            articles.sort((a, b) -> Integer.compare(
+                    b.getViewCount() == null ? 0 : b.getViewCount(),
+                    a.getViewCount() == null ? 0 : a.getViewCount()));
+            return articles;
+        }
+        // 缓存未命中 → 查库并重建 ZSet
+        List<Article> list = articleMapper.selectList(new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
                 .eq(Article::getStatus, 1)
                 .orderByDesc(Article::getViewCount)
                 .orderByDesc(Article::getPublishTime)
                 .orderByDesc(Article::getId)
                 .last("limit " + limit));
+        for (Article a : list) {
+            redisTemplate.opsForZSet().add(HOT_ZSET, String.valueOf(a.getId()),
+                    a.getViewCount() == null ? 0 : a.getViewCount());
+        }
+        return list;
     }
 
-    /**
-     * 拿到一篇文章
-     * @param id
-     * @return
-     */
     public Article getArticle(Long id) {
         Article article = articleMapper.selectById(id);
         if (article == null || article.getDeleted() == 1) {
             throw new IllegalArgumentException("文章不存在");
         }
-        article.setViewCount((article.getViewCount() == null ? 0 : article.getViewCount()) + 1);
+        int newCount = (article.getViewCount() == null ? 0 : article.getViewCount()) + 1;
+        article.setViewCount(newCount);
         articleMapper.updateById(article);
+        // 同步更新 ZSet 中的阅读量
+        redisTemplate.opsForZSet().add(HOT_ZSET, String.valueOf(id), newCount);
         return article;
     }
 
-    /**
-     * 删除一篇文章（利用 MyBatis-Plus 逻辑删除）
-     * @param id
-     */
     public void deleteArticle(Long id) {
         Article article = articleMapper.selectById(id);
         if (article == null) {
             throw new IllegalArgumentException("文章不存在");
         }
         articleMapper.deleteById(id);
+        clearHotCache();
     }
 
-    /**
-     * 保存分类
-     * @param request
-     * @return
-     */
     public Long saveCategory(CategorySaveRequest request) {
         Category category = request.id() == null ? new Category() : categoryMapper.selectById(request.id());
         if (request.id() != null && category == null) {
@@ -202,19 +208,11 @@ public class ContentService {
         return category.getId();
     }
 
-    /**
-     * 分类展示
-     * @return
-     */
     public List<Category> listCategory() {
         return categoryMapper.selectList(new LambdaQueryWrapper<Category>().eq(Category::getDeleted, 0)
                 .orderByAsc(Category::getSort).orderByDesc(Category::getId));
     }
 
-    /**
-     * 删除分类
-     * @param id
-     */
     public void deleteCategory(Long id) {
         Category category = categoryMapper.selectById(id);
         if (category == null) {
@@ -223,55 +221,6 @@ public class ContentService {
         categoryMapper.deleteById(id);
     }
 
-    /**
-     * 保存一个标签
-     * @param request
-     * @return
-     */
-    public Long saveTag(TagSaveRequest request) {
-        Tag tag = request.id() == null ? new Tag() : tagMapper.selectById(request.id());
-        if (request.id() != null && tag == null) {
-            throw new IllegalArgumentException("标签不存在");
-        }
-        tag.setName(request.name());
-        tag.setSlug(request.slug());
-        tag.setColor(request.color());
-        tag.setSort(request.sort() == null ? 0 : request.sort());
-        tag.setStatus(request.status() == null ? 1 : request.status());
-        tag.setDeleted(0);
-        if (request.id() == null) {
-            tagMapper.insert(tag);
-        } else {
-            tagMapper.updateById(tag);
-        }
-        return tag.getId();
-    }
-
-    /**
-     * 标签展示
-     * @return
-     */
-    public List<Tag> listTag() {
-        return tagMapper.selectList(new LambdaQueryWrapper<Tag>().eq(Tag::getDeleted, 0)
-                .orderByAsc(Tag::getSort).orderByDesc(Tag::getId));
-    }
-
-    private static final Parser MD_PARSER;
-    private static final HtmlRenderer MD_RENDERER;
-    static {
-        MutableDataSet options = new MutableDataSet();
-        MD_PARSER = Parser.builder(options).build();
-        MD_RENDERER = HtmlRenderer.builder(options).build();
-    }
-
-    private String mdToHtml(String markdown) {
-        if (markdown == null || markdown.isEmpty()) return "";
-        return MD_RENDERER.render(MD_PARSER.parse(markdown));
-    }
-
-    /**
-     * 切换文章点赞，返回当前是否已点赞
-     */
     @Transactional
     public boolean toggleLike(Long articleId) {
         Long userId = StpUtil.getLoginIdAsLong();
@@ -298,15 +247,49 @@ public class ContentService {
         return true;
     }
 
-    /**
-     * 删除标签
-     * @param id
-     */
+    public Long saveTag(TagSaveRequest request) {
+        Tag tag = request.id() == null ? new Tag() : tagMapper.selectById(request.id());
+        if (request.id() != null && tag == null) {
+            throw new IllegalArgumentException("标签不存在");
+        }
+        tag.setName(request.name());
+        tag.setSlug(request.slug());
+        tag.setColor(request.color());
+        tag.setSort(request.sort() == null ? 0 : request.sort());
+        tag.setStatus(request.status() == null ? 1 : request.status());
+        tag.setDeleted(0);
+        if (request.id() == null) {
+            tagMapper.insert(tag);
+        } else {
+            tagMapper.updateById(tag);
+        }
+        return tag.getId();
+    }
+
+    public List<Tag> listTag() {
+        return tagMapper.selectList(new LambdaQueryWrapper<Tag>().eq(Tag::getDeleted, 0)
+                .orderByAsc(Tag::getSort).orderByDesc(Tag::getId));
+    }
+
     public void deleteTag(Long id) {
         Tag tag = tagMapper.selectById(id);
         if (tag == null) {
             throw new IllegalArgumentException("标签不存在");
         }
         tagMapper.deleteById(id);
+    }
+
+    private static final Parser MD_PARSER;
+    private static final HtmlRenderer MD_RENDERER;
+    static {
+        MutableDataSet options = new MutableDataSet();
+        MD_PARSER = Parser.builder(options).build();
+        MD_RENDERER = HtmlRenderer.builder(options).build();
+    }
+
+    private String mdToHtml(String markdown) {
+        if (markdown == null || markdown.isEmpty()) return "";
+        if (markdown.stripLeading().startsWith("<")) return markdown;
+        return MD_RENDERER.render(MD_PARSER.parse(markdown));
     }
 }

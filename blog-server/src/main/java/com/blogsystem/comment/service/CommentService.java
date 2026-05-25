@@ -60,13 +60,17 @@ public class CommentService {
                 userIds.add(c.getReplyToUserId());
             }
         }
-        Map<Long, String> nicknames = userIds.isEmpty() ? Map.of() :
-                sysUserMapper.selectBatchIds(userIds).stream()
-                        .collect(Collectors.toMap(SysUser::getId, u -> u.getNickname() != null ? u.getNickname() : u.getUsername()));
+        List<SysUser> users = userIds.isEmpty() ? List.of() : sysUserMapper.selectBatchIds(userIds);
+        Map<Long, String> nicknames = users.stream()
+                .collect(Collectors.toMap(SysUser::getId, u -> u.getNickname() != null ? u.getNickname() : u.getUsername()));
+        Map<Long, String> avatars = users.stream()
+                .filter(u -> u.getAvatar() != null)
+                .collect(Collectors.toMap(SysUser::getId, SysUser::getAvatar, (a, b) -> a));
 
         return comments.stream().map(c -> new CommentVO(
                 c.getId(), c.getArticleId(), c.getUserId(),
                 nicknames.getOrDefault(c.getUserId(), "用户"),
+                avatars.get(c.getUserId()),
                 c.getParentId(), c.getReplyToUserId(),
                 c.getReplyToUserId() != null ? nicknames.getOrDefault(c.getReplyToUserId(), "用户") : null,
                 c.getContent(), c.getCreatedAt()

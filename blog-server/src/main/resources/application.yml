@@ -11,6 +11,10 @@ spring:
     username: ${spring.datasource.username}
     password: ${spring.datasource.password}
     driver-class-name: ${spring.datasource.driver-class-name}
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 10MB
 
 mybatis-plus:
   configuration:
@@ -23,9 +27,13 @@ mybatis-plus:
 
 sa-token:
   token-name: Authorization
-  timeout: 2592000
+  timeout: 86400
   active-timeout: -1
   is-concurrent: true
   is-share: false
   is-log: false
   jwt-secret-key: ${sa-token.jwt-secret-key}
+
+blog:
+  upload:
+    dir: ${blog.upload.dir}

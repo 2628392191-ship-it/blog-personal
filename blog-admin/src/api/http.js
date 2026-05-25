@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const http = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: import.meta.env.PROD ? '' : 'http://localhost:8080',
   timeout: 8000
 })
 
@@ -11,10 +11,19 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-http.interceptors.response.use((res) => {
-  const data = res.data
-  if (data.code !== 0) throw new Error(data.message || '请求失败')
-  return data.data
-})
+http.interceptors.response.use(
+  (res) => {
+    const data = res.data
+    if (data.code !== 0) throw new Error(data.message || '请求失败')
+    return data.data
+  },
+  (err) => {
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      localStorage.removeItem('admin_token')
+      window.location.href = '/login'
+    }
+    return Promise.reject(err)
+  }
+)
 
 export default http

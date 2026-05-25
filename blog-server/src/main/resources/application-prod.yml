@@ -1,0 +1,24 @@
+
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+  ai:
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      chat:
+        options:
+          model: qwen-max
+
+sa-token:
+  jwt-secret-key: ${JWT_SECRET}
+
+blog:
+  upload:
+    dir: ${BLOG_UPLOAD_DIR:/app/uploads}

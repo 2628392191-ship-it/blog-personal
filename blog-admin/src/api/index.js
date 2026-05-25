@@ -2,10 +2,14 @@ import http from './http'
 
 export const sendCode = (phone, bizType) => http.post('/api/auth/sms-code', { phone, bizType })
 export const login = (phone, code) => http.post('/api/auth/login', { phone, code })
+export const me = () => http.get('/api/auth/me')
 
 export const listArticles = (pageNum = 1, pageSize = 10, status) => http.get('/api/content/article/list', { params: { pageNum, pageSize, status } })
+export const getArticle = (id) => http.get(`/api/content/article/${id}`)
 export const saveArticle = (payload) => http.post('/api/content/article', payload)
 export const deleteArticle = (id) => http.delete(`/api/content/article/${id}`)
+
+export const deleteFile = (url) => http.delete('/api/file/delete', { params: { url } })
 
 export const listCategories = () => http.get('/api/content/category/list')
 export const saveCategory = (payload) => http.post('/api/content/category', payload)

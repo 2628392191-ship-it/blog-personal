@@ -10,8 +10,17 @@
 
     <div class="profile-card">
       <div class="avatar-section">
-        <div class="avatar-placeholder">{{ avatarLetter }}</div>
-        <p class="avatar-hint">头像功能即将上线</p>
+        <label class="avatar-wrap" :class="{ uploading: uploading }">
+          <img v-if="previewUrl" :src="previewUrl" class="avatar-img" alt="avatar" />
+          <span v-else class="avatar-placeholder">{{ avatarLetter }}</span>
+          <span class="avatar-overlay">
+            <span v-if="uploading">...</span>
+            <span v-else>&#x1F4F7;</span>
+          </span>
+          <input type="file" accept="image/*" hidden @change="onFileChange" />
+        </label>
+        <p class="avatar-hint" v-if="!uploading">点击更换头像</p>
+        <p class="avatar-hint" v-else>上传中...</p>
       </div>
 
       <div class="fields">
@@ -73,19 +82,21 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { changePassword, updateProfile } from '../api'
+import { changePassword, updateProfile, uploadFile } from '../api'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
 const saving = ref(false)
 const changingPwd = ref(false)
+const uploading = ref(false)
+const previewUrl = ref(null)
 const msg = ref('')
 const isError = ref(false)
 const pwdMsg = ref('')
 const pwdIsError = ref(false)
 
-const form = reactive({ nickname: '', email: '' })
+const form = reactive({ nickname: '', email: '', avatar: null })
 const pwdForm = reactive({ oldPassword: '', newPassword: '' })
 
 const avatarLetter = computed(() => {
@@ -93,10 +104,29 @@ const avatarLetter = computed(() => {
   return name.charAt(0).toUpperCase()
 })
 
+const onFileChange = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  previewUrl.value = URL.createObjectURL(file)
+  uploading.value = true
+  try {
+    const res = await uploadFile(file)
+    form.avatar = res.url
+  } catch (e) {
+    msg.value = e.message || '上传失败'
+    isError.value = true
+    previewUrl.value = null
+  } finally {
+    uploading.value = false
+  }
+}
+
 onMounted(() => {
   if (auth.user) {
     form.nickname = auth.user.nickname || ''
     form.email = auth.user.email || ''
+    form.avatar = auth.user.avatar || null
+    if (auth.user.avatar) previewUrl.value = auth.user.avatar
   }
 })
 
@@ -127,7 +157,7 @@ const save = async () => {
     const updated = await updateProfile({
       nickname: form.nickname || null,
       email: form.email || null,
-      avatar: null
+      avatar: form.avatar || null
     })
     auth.user = updated
     msg.value = '个人信息已更新'
@@ -188,17 +218,40 @@ const save = async () => {
   padding-bottom: 28px;
   border-bottom: 1px solid var(--web-line);
 }
-.avatar-placeholder {
-  width: 72px; height: 72px;
+.avatar-wrap {
+  position: relative;
+  width: 80px; height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--web-accent), var(--web-accent-3));
-  color: #fff;
-  font-size: 32px;
-  font-weight: 700;
+  overflow: hidden;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 3px solid var(--web-line);
+  transition: border-color .2s;
 }
+.avatar-wrap:hover { border-color: var(--web-accent-3); }
+.avatar-wrap.uploading { pointer-events: none; opacity: .7; }
+.avatar-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+.avatar-placeholder {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, var(--web-accent), var(--web-accent-3));
+  color: #fff; font-size: 32px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 20px;
+  opacity: 0;
+  transition: opacity .22s;
+}
+.avatar-wrap:hover .avatar-overlay { opacity: 1; }
 .avatar-hint { margin: 10px 0 0; color: var(--web-muted); font-size: 13px; }
 
 .fields { display: flex; flex-direction: column; gap: 18px; }

@@ -7,12 +7,16 @@
       <div class="nav-inner">
         <router-link to="/" class="nav-brand">
           <span class="brand-mark">&#9670;</span>
-          <span class="brand-text">Essays</span>
+          <span class="brand-text">Javerry</span>
         </router-link>
         <div class="nav-links">
           <router-link to="/" class="nav-link">文章</router-link>
+          <router-link to="/ai" class="nav-link nav-ai">AI 助手</router-link>
           <template v-if="auth.isLoggedIn">
-            <router-link to="/profile" class="nav-user">{{ auth.user?.nickname || auth.user?.username }}</router-link>
+            <router-link to="/profile" class="nav-user">
+              <img v-if="auth.user?.avatar" :src="auth.user.avatar" class="nav-avatar" />
+              <span>{{ auth.user?.nickname || auth.user?.username }}</span>
+            </router-link>
             <button class="nav-btn" @click="auth.logout()">退出</button>
           </template>
           <router-link v-else to="/login" class="nav-btn nav-btn--accent">登录</router-link>
@@ -180,15 +184,31 @@ img { max-width: 100%; display: block; }
   color: var(--web-accent);
   background: rgba(74, 144, 217, 0.08);
 }
+.nav-ai {
+  background: linear-gradient(135deg, rgba(74, 144, 217, 0.10), rgba(240, 140, 160, 0.08));
+  color: var(--web-accent-3) !important;
+  font-weight: 600;
+}
+.nav-ai:hover, .nav-ai.router-link-exact-active {
+  background: linear-gradient(135deg, rgba(240, 140, 160, 0.15), rgba(74, 144, 217, 0.12));
+  color: var(--web-accent-3) !important;
+}
 .nav-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   color: var(--web-muted);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 160px;
   cursor: pointer;
   transition: color .2s ease;
+}
+.nav-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--web-line);
+  flex-shrink: 0;
 }
 .nav-user:hover { color: var(--web-accent); }
 .nav-btn {

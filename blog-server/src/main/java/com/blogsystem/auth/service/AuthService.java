@@ -13,11 +13,16 @@ import com.blogsystem.auth.mapper.SysRoleMapper;
 import com.blogsystem.auth.mapper.SysUserMapper;
 import com.blogsystem.auth.mapper.SysUserRoleMapper;
 import cn.dev33.satoken.stp.StpUtil;
+import com.blogsystem.log.entity.LoginLog;
+import com.blogsystem.log.mapper.LoginLogMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -33,12 +38,32 @@ public class AuthService {
     private final SysUserMapper sysUserMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
+    private final StringRedisTemplate redisTemplate;
+    private final LoginLogMapper loginLogMapper;
+    private final HttpServletRequest httpServletRequest;
 
     /**
      * 发送短信验证码，开发环境返回 mockCode 明文
      */
     public Map<String, String> sendSmsCode(SendSmsCodeRequest request, String requestIp) {
+        // 频率限制：同手机号 60s 内只能发 1 次
+        String phoneKey = "sms:phone:" + request.phone();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(phoneKey))) {
+            throw new IllegalArgumentException("验证码已发送，请 60 秒后再试");
+        }
+        // 频率限制：同 IP 每天最多 10 次
+        String ipKey = "sms:ip:" + requestIp;
+        String ipCount = redisTemplate.opsForValue().get(ipKey);
+        if (ipCount != null && Integer.parseInt(ipCount) >= 10) {
+            throw new IllegalArgumentException("今日验证码发送次数已达上限");
+        }
+
         String code = String.valueOf(ThreadLocalRandom.current().nextInt(100000, 1000000));
+
+        // 记录频率
+        redisTemplate.opsForValue().set(phoneKey, "1", Duration.ofSeconds(60));
+        redisTemplate.opsForValue().increment(ipKey);
+        redisTemplate.expire(ipKey, Duration.ofDays(1));
         SmsCodeLog log = new SmsCodeLog();
         log.setPhone(request.phone());
         log.setBizType(request.bizType());
@@ -96,12 +121,14 @@ public class AuthService {
                 .eq(SysUser::getDeleted, 0)
                 .last("limit 1"));
         if (user == null) {
+            writeLoginLog(null, false, "用户不存在");
             throw new IllegalArgumentException("用户不存在，请先注册");
         }
         user.setLastLoginTime(LocalDateTime.now());
         sysUserMapper.updateById(user);
         StpUtil.login(user.getId());
         String token = StpUtil.getTokenValue();
+        writeLoginLog(user, true, null);
         return new LoginUserVO(user.getId(), user.getPhone(), user.getUsername(), user.getNickname(), user.getEmail(), user.getAvatar(), token);
     }
 
@@ -147,6 +174,20 @@ public class AuthService {
         }
         user.setPassword(md5(newPassword));
         sysUserMapper.updateById(user);
+    }
+
+    private void writeLoginLog(SysUser user, boolean success, String failReason) {
+        try {
+            LoginLog log = new LoginLog();
+            log.setUserId(user != null ? user.getId() : null);
+            log.setUsername(user != null ? user.getUsername() : null);
+            log.setLoginStatus(success ? 1 : 0);
+            log.setLoginType("phone");
+            log.setIp(httpServletRequest.getRemoteAddr());
+            log.setUserAgent(httpServletRequest.getHeader("User-Agent"));
+            log.setFailReason(failReason);
+            loginLogMapper.insert(log);
+        } catch (Exception ignored) {}
     }
 
     /**

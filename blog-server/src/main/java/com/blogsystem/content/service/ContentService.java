@@ -140,7 +140,7 @@ public class ContentService {
         return page;
     }
 
-    //TODO::当前做法是将热门文章根据阅读量缓存id，依旧是查询DB
+
     public List<Article> listHotArticles(long limit) {
         // 从 ZSet 取 top N 的 article ID，按 viewCount 降序
         Set<String> topIds = redisTemplate.opsForZSet().reverseRange(HOT_ZSET, 0, limit - 1);

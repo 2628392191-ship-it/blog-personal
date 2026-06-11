@@ -52,6 +52,7 @@ const edit = (row) => {
 const cancel = () => { editingId.value = null; Object.assign(form, { name: '', slug: '' }) }
 
 const submit = async () => {
+  if (!form.slug) form.slug = form.name.toLowerCase().replace(/\s+/g, '-')
   try {
     await saveCategory({ id: editingId.value, ...form })
     cancel()
@@ -78,7 +79,7 @@ onMounted(load)
 .page-title { margin: 0 0 4px; font-size: 24px; font-weight: 700; color: var(--admin-text); }
 .page-sub { margin: 0; font-size: 14px; color: var(--admin-muted); }
 
-.inline-form { display: flex; gap: 10px; margin-bottom: 20px; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
 
 .card-grid { display: flex; flex-direction: column; gap: 8px; }
 .cat-card {

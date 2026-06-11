@@ -30,6 +30,9 @@ public class FileService {
     @Value("${blog.upload.dir:uploads}")
     private String uploadDir;
 
+    @Value("${blog.upload.public-url:}")
+    private String publicUrl;
+
     private static final Set<String> ALLOWED_EXT = Set.of("jpg", "jpeg", "png", "webp", "gif");
     private static final long MAX_SIZE = 2 * 1024 * 1024;
 
@@ -74,7 +77,8 @@ public class FileService {
             md5 = DigestUtils.md5DigestAsHex(is);
         }
 
-        String url = "/uploads/" + subDir + "/" + filename;
+        String url = (publicUrl != null && !publicUrl.isBlank() ? publicUrl : "")
+                + "/uploads/" + subDir + "/" + filename;
 
         FileRecord record = new FileRecord();
         record.setFileName(original);
@@ -92,7 +96,7 @@ public class FileService {
     }
 
     public void deleteByUrl(String url) {
-        if (url == null || !url.startsWith("/uploads/")) return;
+        if (url == null || !url.contains("/uploads/")) return;
 
         FileRecord record = fileRecordMapper.selectOne(
                 new LambdaQueryWrapper<FileRecord>().eq(FileRecord::getFileUrl, url));

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, register as apiRegister, me } from '../api'
+import { login as apiLogin, loginByPassword as apiLoginByPassword, register as apiRegister, me } from '../api'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('blog_token') || '')
@@ -19,6 +19,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loginByPassword(phone, password) {
+    loading.value = true
+    try {
+      const res = await apiLoginByPassword(phone, password)
+      token.value = res.token
+      localStorage.setItem('blog_token', res.token)
+      await fetchMe()
+      return res
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function login(phone, code) {
     loading.value = true
     try {
@@ -32,10 +45,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(phone, code) {
+  async function register(phone, code, password, confirmPassword) {
     loading.value = true
     try {
-      const res = await apiRegister(phone, code)
+      const res = await apiRegister(phone, code, password, confirmPassword)
       token.value = res.token
       localStorage.setItem('blog_token', res.token)
       await fetchMe()
@@ -51,5 +64,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('blog_token')
   }
 
-  return { token, user, loading, isLoggedIn, fetchMe, login, register, logout }
+  return { token, user, loading, isLoggedIn, fetchMe, login, loginByPassword, register, logout }
 })

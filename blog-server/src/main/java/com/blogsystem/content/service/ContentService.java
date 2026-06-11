@@ -43,9 +43,11 @@ public class ContentService {
     private final StringRedisTemplate redisTemplate;
 
     private static final String HOT_ZSET = "cache:hotArticles";
+    private static final String LIKE_ZSET = "cache:hotByLikes";
 
     private void clearHotCache() {
         redisTemplate.delete(HOT_ZSET);
+        redisTemplate.delete(LIKE_ZSET);
     }
 
     @Transactional
@@ -99,7 +101,8 @@ public class ContentService {
 
     public Page<Article> listArticles(Integer status, Long categoryId, Long tagId, long pageNum, long pageSize) {
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
-                .orderByDesc(Article::getIsTop).orderByDesc(Article::getPublishTime).orderByDesc(Article::getId);
+                .orderByDesc(Article::getIsTop).orderByDesc(Article::getViewCount)
+                .orderByDesc(Article::getPublishTime).orderByDesc(Article::getId);
         if (status != null) {
             wrapper.eq(Article::getStatus, status);
         }
@@ -107,7 +110,14 @@ public class ContentService {
             wrapper.eq(Article::getCategoryId, categoryId);
         }
         if (tagId != null) {
-            wrapper.inSql(Article::getId, "select article_id from article_tag where tag_id = " + tagId);
+            List<Long> articleIds = articleTagMapper.selectList(
+                    new LambdaQueryWrapper<ArticleTag>().eq(ArticleTag::getTagId, tagId))
+                    .stream().map(ArticleTag::getArticleId).toList();
+            if (articleIds.isEmpty()) {
+                wrapper.eq(Article::getId, -1L);
+            } else {
+                wrapper.in(Article::getId, articleIds);
+            }
         }
         Page<Article> page = articleMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<Article> records = page.getRecords();
@@ -142,27 +152,33 @@ public class ContentService {
 
 
     public List<Article> listHotArticles(long limit) {
-        // 从 ZSet 取 top N 的 article ID，按 viewCount 降序
-        Set<String> topIds = redisTemplate.opsForZSet().reverseRange(HOT_ZSET, 0, limit - 1);
+        // 从点赞 ZSet 取 top N，先按 isTop 再按 likeCount 降序
+        Set<String> topIds = redisTemplate.opsForZSet().reverseRange(LIKE_ZSET, 0, limit - 1);
         if (topIds != null && !topIds.isEmpty()) {
             List<Long> ids = topIds.stream().map(Long::valueOf).collect(Collectors.toList());
             List<Article> articles = articleMapper.selectBatchIds(ids);
-            // 按 viewCount 降序排列
-            articles.sort((a, b) -> Integer.compare(
-                    b.getViewCount() == null ? 0 : b.getViewCount(),
-                    a.getViewCount() == null ? 0 : a.getViewCount()));
+            articles.sort((a, b) -> {
+                int topCmp = Integer.compare(
+                        b.getIsTop() == null ? 0 : b.getIsTop(),
+                        a.getIsTop() == null ? 0 : a.getIsTop());
+                if (topCmp != 0) return topCmp;
+                return Integer.compare(
+                        b.getLikeCount() == null ? 0 : b.getLikeCount(),
+                        a.getLikeCount() == null ? 0 : a.getLikeCount());
+            });
             return articles;
         }
-        // 缓存未命中 → 查库并重建 ZSet
+        // 缓存未命中 → 查库并重建点赞 ZSet
         List<Article> list = articleMapper.selectList(new LambdaQueryWrapper<Article>().eq(Article::getDeleted, 0)
                 .eq(Article::getStatus, 1)
-                .orderByDesc(Article::getViewCount)
+                .orderByDesc(Article::getIsTop)
+                .orderByDesc(Article::getLikeCount)
                 .orderByDesc(Article::getPublishTime)
                 .orderByDesc(Article::getId)
                 .last("limit " + limit));
         for (Article a : list) {
-            redisTemplate.opsForZSet().add(HOT_ZSET, String.valueOf(a.getId()),
-                    a.getViewCount() == null ? 0 : a.getViewCount());
+            redisTemplate.opsForZSet().add(LIKE_ZSET, String.valueOf(a.getId()),
+                    a.getLikeCount() == null ? 0 : a.getLikeCount());
         }
         return list;
     }
@@ -236,6 +252,7 @@ public class ContentService {
             articleLikeMapper.deleteById(exist.getId());
             article.setLikeCount(Math.max(0, (article.getLikeCount() == null ? 0 : article.getLikeCount()) - 1));
             articleMapper.updateById(article);
+            redisTemplate.opsForZSet().add(LIKE_ZSET, String.valueOf(articleId), article.getLikeCount());
             return false;
         }
         ArticleLike like = new ArticleLike();
@@ -244,6 +261,7 @@ public class ContentService {
         articleLikeMapper.insert(like);
         article.setLikeCount((article.getLikeCount() == null ? 0 : article.getLikeCount()) + 1);
         articleMapper.updateById(article);
+        redisTemplate.opsForZSet().add(LIKE_ZSET, String.valueOf(articleId), article.getLikeCount());
         return true;
     }
 

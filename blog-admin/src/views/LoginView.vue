@@ -7,17 +7,32 @@
       </div>
 
       <div class="card-body">
+        <div class="tab-row">
+          <button class="tab-btn" :class="{ active: mode === 'sms' }" @click="mode = 'sms'">短信登录</button>
+          <button class="tab-btn" :class="{ active: mode === 'pwd' }" @click="mode = 'pwd'">密码登录</button>
+        </div>
+
         <div class="field-stack">
           <label>手机号</label>
-          <el-input v-model="phone" placeholder="输入管理员手机号" size="large" @keyup.enter="focusCode" />
+          <el-input v-model="phone" placeholder="输入管理员手机号" size="large" />
         </div>
-        <div class="field-stack">
-          <label>验证码</label>
-          <div class="code-row">
-            <el-input ref="codeInputRef" v-model="code" placeholder="6 位验证码" size="large" @keyup.enter="doLogin" />
-            <el-button @click="send" :loading="sending" class="send-btn">获取验证码</el-button>
+
+        <template v-if="mode === 'sms'">
+          <div class="field-stack">
+            <label>验证码</label>
+            <div class="code-row">
+              <el-input ref="codeInputRef" v-model="code" placeholder="6 位验证码" size="large" @keyup.enter="doLogin" />
+              <el-button @click="send" :loading="sending" class="send-btn">获取验证码</el-button>
+            </div>
           </div>
-        </div>
+        </template>
+
+        <template v-if="mode === 'pwd'">
+          <div class="field-stack">
+            <label>密码</label>
+            <el-input v-model="pwd" type="password" placeholder="输入密码" size="large" @keyup.enter="doLogin" />
+          </div>
+        </template>
 
         <el-button type="primary" size="large" @click="doLogin" :loading="loading" class="login-btn">
           登录控制台
@@ -42,16 +57,16 @@ import { sendCode } from '../api'
 const router = useRouter()
 const auth = useAdminAuthStore()
 
+const mode = ref('sms')
 const phone = ref('13800000000')
 const code = ref('')
+const pwd = ref('')
 const mockCode = ref('')
 const msg = ref('')
 const isError = ref(false)
 const sending = ref(false)
 const loading = ref(false)
 const codeInputRef = ref(null)
-
-const focusCode = () => { codeInputRef.value?.focus() }
 
 const send = async () => {
   if (!phone.value || phone.value.length < 11) {
@@ -72,18 +87,19 @@ const send = async () => {
 }
 
 const doLogin = async () => {
-  if (!code.value) {
-    msg.value = '请输入验证码'
-    isError.value = true
-    return
-  }
+  msg.value = ''; isError.value = false
   loading.value = true
   try {
-    await auth.login(phone.value, code.value)
+    if (mode.value === 'pwd') {
+      if (!pwd.value) { msg.value = '请输入密码'; isError.value = true; return }
+      await auth.loginByPassword(phone.value, pwd.value)
+    } else {
+      if (!code.value) { msg.value = '请输入验证码'; isError.value = true; return }
+      await auth.login(phone.value, code.value)
+    }
     router.push('/')
   } catch (e) {
-    msg.value = e.message
-    isError.value = true
+    msg.value = e.message; isError.value = true
   } finally { loading.value = false }
 }
 </script>
@@ -116,6 +132,15 @@ const doLogin = async () => {
 .header-text { font-size: 15px; font-weight: 600; color: var(--admin-text); }
 
 .card-body { padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+.tab-row { display: flex; gap: 8px; }
+.tab-btn {
+  flex: 1; padding: 10px; font-size: 14px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-bg); color: var(--admin-muted);
+  cursor: pointer; border-radius: 8px; transition: all .2s;
+}
+.tab-btn.active { background: var(--admin-accent); color: #fff; border-color: var(--admin-accent); font-weight: 700; }
+.tab-btn:not(.active):hover { border-color: var(--admin-accent); color: var(--admin-accent); }
 .field-stack { display: flex; flex-direction: column; gap: 6px; }
 .field-stack label { font-size: 13px; color: var(--admin-muted); font-weight: 600; }
 .code-row { display: flex; gap: 10px; }

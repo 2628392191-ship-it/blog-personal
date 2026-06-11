@@ -9,5 +9,7 @@ public record PhoneCodeAuthRequest(
         String phone,
         @NotBlank(message = "验证码不能为空")
         @Pattern(regexp = "^\\d{6}$", message = "验证码格式不正确")
-        String code
+        String code,
+        String password,
+        String confirmPassword
 ) {}

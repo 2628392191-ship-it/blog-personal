@@ -557,4 +557,10 @@ onBeforeUnmount(() => {
   .toolbar { gap: 0; padding: 6px 8px; }
   .editor-primary { height: 50vh; min-height: 400px; }
 }
+@media (max-width: 640px) {
+  .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .meta-bar { flex-direction: column; gap: 8px; }
+  .form-section { flex-direction: column; }
+  .toolbar { gap: 0; padding: 4px 6px; overflow-x: auto; }
+}
 </style>

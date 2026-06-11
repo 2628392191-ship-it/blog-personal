@@ -192,7 +192,7 @@ VALUES ('Vue 3', 'vue-3', '#42b883', 1, 1, 0),
 ON DUPLICATE KEY UPDATE name = VALUES(name), color = VALUES(color), sort = VALUES(sort), status = VALUES(status), deleted = VALUES(deleted);
 
 INSERT INTO sys_user (phone, username, password, nickname, status, deleted)
-VALUES ('13800000000', 'admin', '21232f297a57a5a743894a0e4a801fc3', '超级管理员', 1, 0)
+VALUES ('13800000000', 'admin', '\$2b\$10\$QEsz3zEEkk8O30lbAfS6Fukd2rWg0Swvp6HfkPytnbnW8TBDAwWQq', '超级管理员', 1, 0)
 ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), status = VALUES(status), deleted = VALUES(deleted);
 
 INSERT INTO sys_user_role (user_id, role_id)

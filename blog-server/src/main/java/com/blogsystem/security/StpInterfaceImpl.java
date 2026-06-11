@@ -6,6 +6,7 @@ import com.blogsystem.auth.mapper.SysRoleMapper;
 import com.blogsystem.auth.mapper.SysRolePermissionMapper;
 import com.blogsystem.auth.mapper.SysUserRoleMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 /**
  * Sa-Token 权限接口实现 —— 加载用户角色与权限列表
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class StpInterfaceImpl implements StpInterface {
@@ -32,7 +34,9 @@ public class StpInterfaceImpl implements StpInterface {
                         .eq(SysUserRole::getUserId, userId));
         if (userRoles.isEmpty()) return Collections.emptyList();
         List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).toList();
-        return sysRolePermissionMapper.getPermissionCodesByRoleIds(roleIds);
+        List<String> perms = sysRolePermissionMapper.getPermissionCodesByRoleIds(roleIds);
+        log.info("用户 {} 的角色IDs={}，权限码={}", loginId, roleIds, perms);
+        return perms;
     }
 
     @Override

@@ -2,6 +2,7 @@ import http from './http'
 
 export const sendCode = (phone, bizType) => http.post('/api/auth/sms-code', { phone, bizType })
 export const login = (phone, code) => http.post('/api/auth/login', { phone, code })
+export const loginByPassword = (phone, password) => http.post('/api/auth/login/password', { phone, password })
 export const me = () => http.get('/api/auth/me')
 
 export const listArticles = (pageNum = 1, pageSize = 10, status) => http.get('/api/content/article/list', { params: { pageNum, pageSize, status } })

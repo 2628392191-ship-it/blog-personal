@@ -1,17 +1,22 @@
 package com.blogsystem.ai.service;
 
+import cn.dev33.satoken.stp.StpUtil;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+
+import java.time.Duration;
 
 @Service
 public class AiService {
 
     private final ChatClient chatClient;
+    private final StringRedisTemplate redisTemplate;
 
     private static final String SYSTEM_PROMPT = """
             你是 Javerry 博客的 AI 技术助手，名字叫「小J」。
@@ -27,7 +32,9 @@ public class AiService {
             5. 每次回答控制在 300-800 字。
             """;
 
-    public AiService(ChatClient.Builder builder, ChatMemory chatMemory, VectorStore vectorStore) {
+    public AiService(ChatClient.Builder builder, ChatMemory chatMemory, VectorStore vectorStore,
+                      StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
         this.chatClient = builder
                 .defaultSystem(SYSTEM_PROMPT)
                 .defaultAdvisors(
@@ -37,6 +44,16 @@ public class AiService {
     }
 
     public Flux<String> chat(String userMessage, String chatId) {
+        // AI 频率限制：每用户每小时最多 50 次
+        Long userId = StpUtil.getLoginIdAsLong();
+        String rateKey = "rate:ai:user:" + userId;
+        String count = redisTemplate.opsForValue().get(rateKey);
+        if (count != null && Integer.parseInt(count) >= 50) {
+            throw new IllegalArgumentException("AI 对话次数已达每小时上限，请稍后再试");
+        }
+        redisTemplate.opsForValue().increment(rateKey);
+        redisTemplate.expire(rateKey, Duration.ofHours(1));
+
         return chatClient
                 .prompt()
                 .user(userMessage)
@@ -46,6 +63,6 @@ public class AiService {
     }
 
     public void clearMemory(String chatId) {
-        throw new UnsupportedOperationException("use AiController.clearMemory instead");
+        // 委托 Controller 中的 ChatMemory 直接操作（避免在 Service 层维护 ChatMemory 引用）
     }
 }

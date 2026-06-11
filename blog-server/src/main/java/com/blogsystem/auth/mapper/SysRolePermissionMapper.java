@@ -16,4 +16,13 @@ public interface SysRolePermissionMapper extends BaseMapper<SysRolePermission> {
             "WHERE rp.role_id IN <foreach collection='list' item='id' open='(' separator=',' close=')'>#{id}</foreach>" +
             "</script>")
     List<String> getPermissionCodesByRoleIds(List<Long> roleIds);
+
+    /**
+     * 确保角色拥有指定权限：先查 permission 是否存在，再关联到 role
+     */
+    @org.apache.ibatis.annotations.Insert("<script>" +
+            "INSERT IGNORE INTO sys_role_permission (role_id, permission_id) " +
+            "SELECT #{roleId}, p.id FROM sys_permission p WHERE p.perm_code = #{permCode}" +
+            "</script>")
+    void ensureRolePermission(Long roleId, String permCode);
 }

@@ -5,6 +5,9 @@
         <span class="brand-icon">&#9733;</span>
         <span class="brand-text">Blog Admin</span>
       </div>
+      <button class="hamburger" @click="menuOpen = !menuOpen">
+        <span :class="{ open: menuOpen }"></span>
+      </button>
 
       <nav class="sidebar-nav">
         <router-link to="/articles" class="nav-item" active-class="nav-item--active">
@@ -59,6 +62,27 @@
         </transition>
       </router-view>
     </main>
+
+    <!-- 移动端侧边抽屉 -->
+    <Teleport to="body">
+      <div class="mobile-overlay" :class="{ show: menuOpen }" @click.self="menuOpen = false">
+        <div class="mobile-drawer">
+          <button class="mobile-close" @click="menuOpen = false">&times;</button>
+          <nav class="mobile-nav">
+            <router-link to="/articles" class="mobile-nav-item" @click="menuOpen = false">&#9998; 文章管理</router-link>
+            <router-link to="/comments" class="mobile-nav-item" @click="menuOpen = false">&#9993; 评论审核</router-link>
+            <router-link to="/categories" class="mobile-nav-item" @click="menuOpen = false">&#9737; 分类管理</router-link>
+            <router-link to="/tags" class="mobile-nav-item" @click="menuOpen = false">&#9733; 标签管理</router-link>
+            <router-link to="/users" class="mobile-nav-item" @click="menuOpen = false">&#9787; 用户管理</router-link>
+            <router-link to="/logs" class="mobile-nav-item" @click="menuOpen = false">&#9776; 操作日志</router-link>
+          </nav>
+          <div class="mobile-foot">
+            <button class="theme-toggle" @click="toggleTheme">{{ currentTheme === 'dark' ? '☀ 亮色' : '☾ 暗色' }}</button>
+            <button v-if="auth.isLoggedIn" class="logout-btn" @click="handleLogout; menuOpen = false">退出</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -69,6 +93,7 @@ import { useAdminAuthStore } from './stores/auth'
 
 const router = useRouter()
 const auth = useAdminAuthStore()
+const menuOpen = ref(false)
 const THEME_KEY = 'admin_theme'
 const currentTheme = ref('light')
 
@@ -399,12 +424,70 @@ img { max-width: 100%; display: block; }
   .sidebar { width: 180px; padding: 16px 10px; }
   .main-content { padding: 24px 18px 48px; }
 }
+
+/* ---- Hamburguer + Mobile Drawer (admin) ---- */
+.hamburger {
+  display: none;
+  width: 36px; height: 36px;
+  background: none; border: 1px solid var(--admin-line);
+  border-radius: 8px; cursor: pointer;
+  position: relative;
+}
+.hamburger span,
+.hamburger span::before,
+.hamburger span::after {
+  display: block; width: 18px; height: 2px;
+  background: var(--admin-text); border-radius: 2px;
+  transition: all .25s ease; position: absolute;
+}
+.hamburger span { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.hamburger span::before { content: ''; top: -5px; left: 0; }
+.hamburger span::after { content: ''; top: 5px; left: 0; }
+.hamburger span.open { background: transparent; }
+.hamburger span.open::before { top: 0; transform: rotate(45deg); }
+.hamburger span.open::after { top: 0; transform: rotate(-45deg); }
+
+.mobile-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.4);
+  opacity: 0; visibility: hidden; transition: all .3s;
+}
+.mobile-overlay.show { opacity: 1; visibility: visible; }
+.mobile-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: min(260px, 75vw);
+  background: var(--admin-panel); padding: 20px;
+  display: flex; flex-direction: column; gap: 8px;
+  transform: translateX(-100%); transition: transform .3s ease;
+  box-shadow: 4px 0 20px rgba(0,0,0,0.2);
+}
+.mobile-overlay.show .mobile-drawer { transform: translateX(0); }
+.mobile-close {
+  align-self: flex-end; background: none; border: none;
+  color: var(--admin-muted); font-size: 26px; cursor: pointer;
+}
+.mobile-nav { display: flex; flex-direction: column; gap: 2px; }
+.mobile-nav-item {
+  display: block; padding: 12px 14px; border-radius: 8px;
+  color: var(--admin-text); font-size: 15px; transition: all .2s;
+}
+.mobile-nav-item:hover { background: var(--admin-soft-accent); }
+.mobile-foot {
+  margin-top: auto; display: flex; flex-direction: column; gap: 8px;
+  border-top: 1px solid var(--admin-line); padding-top: 12px;
+}
+
 @media (max-width: 640px) {
   .admin-shell { flex-direction: column; }
-  .sidebar { position: static; width: 100%; min-height: auto; padding: 12px 14px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .sidebar-brand { margin-bottom: 0; }
-  .sidebar-nav { flex-direction: row; flex: none; }
-  .sidebar-foot { flex-direction: row; border-top: none; padding-top: 0; }
+  .sidebar {
+    position: static; width: 100%; min-height: auto;
+    padding: 10px 14px; flex-direction: row; align-items: center; gap: 10px;
+  }
+  .sidebar-brand { margin-bottom: 0; font-size: 15px; }
+  .sidebar-nav { display: none; }
+  .sidebar-user { display: none; }
+  .sidebar-foot { display: none; }
+  .hamburger { display: block; margin-left: auto; }
   .main-content { padding: 20px 14px 40px; }
 }
 </style>

@@ -21,8 +21,29 @@
           </template>
           <router-link v-else to="/login" class="nav-btn nav-btn--accent">登录</router-link>
         </div>
+        <button class="hamburger" @click="menuOpen = !menuOpen" :aria-label="menuOpen ? '关闭菜单' : '打开菜单'">
+          <span :class="{ open: menuOpen }"></span>
+        </button>
       </div>
     </nav>
+
+    <!-- 移动端菜单 -->
+    <Teleport to="body">
+      <div class="mobile-menu-overlay" :class="{ show: menuOpen }" @click.self="menuOpen = false">
+        <div class="mobile-menu">
+          <button class="mobile-menu-close" @click="menuOpen = false">&times;</button>
+          <router-link to="/" class="mobile-nav-link" @click="menuOpen = false">文章</router-link>
+          <router-link to="/ai" class="mobile-nav-link" @click="menuOpen = false">AI 助手</router-link>
+          <template v-if="auth.isLoggedIn">
+            <router-link to="/profile" class="mobile-nav-link" @click="menuOpen = false">
+              {{ auth.user?.nickname || auth.user?.username }}
+            </router-link>
+            <button class="mobile-nav-btn" @click="auth.logout(); menuOpen = false">退出登录</button>
+          </template>
+          <router-link v-else to="/login" class="mobile-nav-btn mobile-nav-btn--accent" @click="menuOpen = false">登录 / 注册</router-link>
+        </div>
+      </div>
+    </Teleport>
 
     <main class="main-content">
       <router-view v-slot="{ Component }">
@@ -45,11 +66,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 const year = computed(() => new Date().getFullYear())
+const menuOpen = ref(false)
 
 onMounted(() => {
   auth.fetchMe()
@@ -82,12 +104,15 @@ onMounted(() => {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(ellipse at 20% 10%, rgba(74, 144, 217, 0.12), transparent 45%),
-    radial-gradient(ellipse at 80% 60%, rgba(240, 140, 160, 0.10), transparent 40%),
-    radial-gradient(ellipse at 50% 90%, rgba(91, 184, 158, 0.08), transparent 35%),
-    linear-gradient(180deg, #eef4ff 0%, #f0f5ff 50%, #f8f4ff 100%);
-  background-attachment: fixed;
+  background: url('https://w.wallhaven.cc/full/8g/wallhaven-8grqjo.jpg') center / cover no-repeat fixed;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 0;
+  pointer-events: none;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -96,6 +121,7 @@ img { max-width: 100%; display: block; }
 
 .web-shell {
   position: relative;
+  z-index: 1;
   min-height: 100vh;
   overflow-x: hidden;
   display: flex;
@@ -140,10 +166,10 @@ img { max-width: 100%; display: block; }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(240, 245, 255, 0.70);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-bottom: 1px solid var(--web-line);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .nav-inner {
   max-width: 1040px;
@@ -160,72 +186,52 @@ img { max-width: 100%; display: block; }
   gap: 10px;
   font-family: var(--web-font-display);
   font-size: 22px;
-  color: var(--web-accent);
+  color: rgba(255, 255, 255, 0.9);
   transition: transform .2s ease;
 }
 .nav-brand:hover { transform: scale(1.04); }
-.brand-mark {
-  font-size: 26px;
-  line-height: 1;
-}
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
+.brand-mark { font-size: 26px; line-height: 1; color: var(--web-accent-3); }
+.nav-links { display: flex; align-items: center; gap: 18px; }
 .nav-link {
   font-size: 15px;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.6);
   transition: all .2s ease;
   padding: 6px 12px;
   border-radius: 999px;
 }
 .nav-link:hover, .nav-link.router-link-exact-active {
-  color: var(--web-accent);
-  background: rgba(74, 144, 217, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
 }
 .nav-ai {
-  background: linear-gradient(135deg, rgba(74, 144, 217, 0.10), rgba(240, 140, 160, 0.08));
+  background: rgba(255, 255, 255, 0.1);
   color: var(--web-accent-3) !important;
   font-weight: 600;
 }
 .nav-ai:hover, .nav-ai.router-link-exact-active {
-  background: linear-gradient(135deg, rgba(240, 140, 160, 0.15), rgba(74, 144, 217, 0.12));
+  background: rgba(255, 255, 255, 0.18);
   color: var(--web-accent-3) !important;
 }
 .nav-user {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--web-muted);
-  max-width: 160px;
-  cursor: pointer;
-  transition: color .2s ease;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: rgba(255, 255, 255, 0.6);
+  max-width: 160px; cursor: pointer; transition: color .2s ease;
 }
 .nav-avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--web-line);
-  flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 50%;
+  object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.2); flex-shrink: 0;
 }
-.nav-user:hover { color: var(--web-accent); }
+.nav-user:hover { color: rgba(255, 255, 255, 0.9); }
 .nav-btn {
-  padding: 7px 18px;
-  font-size: 14px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.60);
-  color: var(--web-ink);
-  cursor: pointer;
-  transition: all .22s ease;
-  border-radius: 999px;
+  padding: 7px 18px; font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer; transition: all .22s ease; border-radius: 999px;
 }
-.nav-btn:hover { background: rgba(255,255,255,0.90); transform: scale(1.04); }
+.nav-btn:hover { background: rgba(255, 255, 255, 0.2); color: #fff; transform: scale(1.04); }
 .nav-btn--accent {
-  background: var(--web-accent-3);
-  color: #fff;
-  border-color: var(--web-accent-3);
+  background: var(--web-accent-3); color: #fff; border-color: var(--web-accent-3);
 }
 .nav-btn--accent:hover { background: #e47890; transform: scale(1.06); }
 
@@ -276,6 +282,81 @@ img { max-width: 100%; display: block; }
 }
 .footer-brand .brand-mark { font-size: 16px; color: var(--web-accent-3); }
 .footer-copy { margin: 0; }
+
+/* ---- Hamburguer Button ---- */
+.hamburger {
+  display: none;
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+.hamburger span,
+.hamburger span::before,
+.hamburger span::after {
+  display: block; width: 20px; height: 2px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 2px;
+  transition: all .25s ease;
+  position: absolute;
+}
+.hamburger span { top: 50%; transform: translateY(-50%); }
+.hamburger span::before { content: ''; top: -6px; }
+.hamburger span::after { content: ''; top: 6px; }
+.hamburger span.open { background: transparent; }
+.hamburger span.open::before { top: 0; transform: rotate(45deg); }
+.hamburger span.open::after { top: 0; transform: rotate(-45deg); }
+
+/* ---- Mobile Menu ---- */
+.mobile-menu-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  opacity: 0; visibility: hidden;
+  transition: all .3s ease;
+}
+.mobile-menu-overlay.show { opacity: 1; visibility: visible; }
+.mobile-menu {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(280px, 80vw);
+  background: rgba(20,20,40,0.95);
+  backdrop-filter: blur(20px);
+  padding: 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  transform: translateX(100%);
+  transition: transform .3s ease;
+}
+.mobile-menu-overlay.show .mobile-menu { transform: translateX(0); }
+.mobile-menu-close {
+  align-self: flex-end; background: none; border: none;
+  color: rgba(255,255,255,0.6); font-size: 28px;
+  cursor: pointer; padding: 0; line-height: 1;
+}
+.mobile-nav-link {
+  display: block; padding: 14px 16px; border-radius: 10px;
+  color: rgba(255,255,255,0.7); font-size: 17px;
+  transition: all .2s;
+}
+.mobile-nav-link:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.95); }
+.mobile-nav-btn {
+  padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7);
+  font-size: 16px; cursor: pointer; text-align: center; transition: all .2s;
+}
+.mobile-nav-btn:hover { background: rgba(255,255,255,0.12); }
+.mobile-nav-btn--accent { background: var(--web-accent-3); border-color: transparent; color: #fff; }
+
+@media (max-width: 640px) {
+  .nav-links { display: none; }
+  .hamburger { display: flex; }
+  .nav-inner { height: 50px; padding: 0 16px; }
+  .brand-text { display: none; }
+}
 
 @media (max-width: 720px) {
   .nav-inner { height: 50px; }

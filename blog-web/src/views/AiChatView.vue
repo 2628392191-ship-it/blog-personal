@@ -51,6 +51,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -69,7 +70,7 @@ const suggestions = [
   '微服务架构的优缺点是什么？'
 ]
 
-const renderMd = (text) => md.render(text || '')
+const renderMd = (text) => DOMPurify.sanitize(md.render(text || ''))
 
 const scrollDown = async () => {
   await nextTick()
@@ -149,7 +150,7 @@ onMounted(() => {
 
 .chat-panel {
   flex: 1; display: flex; flex-direction: column;
-  background: var(--web-paper); border: 1px solid var(--web-line);
+  background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--web-radius); box-shadow: var(--web-shadow);
   overflow: hidden;
 }
@@ -160,10 +161,10 @@ onMounted(() => {
   background: var(--admin-soft-accent);
 }
 .chat-header h2 { margin: 0; font-size: 18px; }
-.chat-header p { margin: 0; font-size: 13px; color: var(--web-muted); flex: 1; }
+.chat-header p { margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.5); flex: 1; }
 .clear-btn {
-  padding: 6px 14px; font-size: 12px; border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.6); color: var(--web-muted);
+  padding: 6px 14px; font-size: 12px; border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.5);
   border-radius: 999px; cursor: pointer; transition: all .2s;
 }
 .clear-btn:hover { border-color: var(--web-accent-3); color: var(--web-accent-3); }
@@ -173,11 +174,11 @@ onMounted(() => {
 .welcome { text-align: center; padding: 40px 0; }
 .welcome-icon { font-size: 48px; color: var(--web-accent-3); }
 .welcome h3 { margin: 12px 0 8px; font-size: 22px; }
-.welcome p { color: var(--web-muted); margin: 0 0 20px; }
+.welcome p { color: rgba(255, 255, 255, 0.5); margin: 0 0 20px; }
 .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .suggestions button {
-  padding: 8px 16px; font-size: 13px; border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.6); color: var(--web-ink);
+  padding: 8px 16px; font-size: 13px; border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.85);
   border-radius: 999px; cursor: pointer; transition: all .2s;
 }
 .suggestions button:hover { border-color: var(--web-accent); color: var(--web-accent); }
@@ -193,21 +194,21 @@ onMounted(() => {
 .msg.assistant .msg-avatar { background: linear-gradient(135deg, var(--web-accent), var(--web-accent-3)); }
 .msg.user .msg-avatar { background: var(--web-muted); }
 .msg-content { max-width: 75%; }
-.msg-role { font-size: 12px; color: var(--web-muted); margin-bottom: 4px; }
+.msg-role { font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-bottom: 4px; }
 .msg.user .msg-role { text-align: right; }
-.msg-text { font-size: 15px; line-height: 1.7; color: var(--web-ink); }
+.msg-text { font-size: 15px; line-height: 1.7; color: rgba(255, 255, 255, 0.85); }
 .msg-text.streaming::after { content: '▍'; animation: blink .8s infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
 /* markdown styles in chat */
 .msg-text :deep(pre) {
-  background: rgba(74, 144, 217, 0.05); padding: 12px 16px; overflow-x: auto;
+  background: rgba(255, 255, 255, 0.05); padding: 12px 16px; overflow-x: auto;
   font-size: 13px; line-height: 1.5; border-left: 3px solid var(--web-accent);
   border-radius: 0 6px 6px 0; margin: 10px 0;
 }
 .msg-text :deep(code) {
   font-family: "Consolas", "Monaco", monospace; font-size: .9em;
-  background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06); padding: 2px 6px; border-radius: 3px;
 }
 .msg-text :deep(pre code) { background: none; padding: 0; }
 .msg-text :deep(p) { margin: 6px 0; }
@@ -215,11 +216,11 @@ onMounted(() => {
 
 .chat-input {
   display: flex; gap: 10px; padding: 14px 20px;
-  border-top: 1px solid var(--web-line); background: rgba(0,0,0,0.01);
+  border-top: 1px solid var(--web-line); background: rgba(255, 255, 255, 0.03);
 }
 .chat-input textarea {
-  flex: 1; padding: 12px 14px; border: 1px solid var(--web-line);
-  background: var(--web-paper); color: var(--web-ink);
+  flex: 1; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: rgba(255, 255, 255, 0.85);
   font-size: 15px; border-radius: var(--web-radius); resize: none;
 }
 .chat-input textarea:focus {
@@ -232,4 +233,11 @@ onMounted(() => {
 }
 .send-btn:hover:not(:disabled) { background: #e47890; transform: scale(1.04); }
 .send-btn:disabled { opacity: .4; cursor: not-allowed; }
+@media (max-width: 640px) {
+  .page { padding: 16px 10px 40px; }
+  .msg-content { max-width: 90%; }
+  .chat-header { padding: 12px 14px; }
+  .chat-body { padding: 14px; }
+  .chat-input { padding: 10px 14px; }
+}
 </style>

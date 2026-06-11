@@ -26,45 +26,52 @@
 
       <div class="auth-form">
         <div class="tab-row">
-          <button
-            class="tab-btn"
-            :class="{ active: mode === 'login' }"
-            @click="mode = 'login'"
-          >登录</button>
-          <button
-            class="tab-btn"
-            :class="{ active: mode === 'register' }"
-            @click="mode = 'register'"
-          >注册</button>
+          <button class="tab-btn" :class="{ active: mode === 'sms' }" @click="mode = 'sms'">短信登录</button>
+          <button class="tab-btn" :class="{ active: mode === 'pwd' }" @click="mode = 'pwd'">密码登录</button>
+          <button class="tab-btn" :class="{ active: mode === 'register' }" @click="mode = 'register'">注册</button>
         </div>
 
         <div class="field-stack">
           <label>手机号</label>
-          <input
-            v-model="phone"
-            type="tel"
-            placeholder="输入手机号"
-            maxlength="11"
-          />
+          <input v-model="phone" type="tel" placeholder="输入手机号" maxlength="11" />
         </div>
 
-        <div class="field-stack">
+        <!-- 短信登录 / 注册 — 验证码 -->
+        <div class="field-stack" v-if="mode !== 'pwd'">
           <label>验证码</label>
           <div class="code-row">
-            <input
-              v-model="code"
-              placeholder="6 位验证码"
-              maxlength="6"
-            />
+            <input v-model="code" placeholder="6 位验证码" maxlength="6" />
             <button class="send-btn" @click="send" :disabled="sending">
               {{ sending ? '发送中...' : '获取验证码' }}
             </button>
           </div>
         </div>
 
+        <!-- 密码登录 — 密码 -->
+        <div class="field-stack" v-if="mode === 'pwd'">
+          <label>密码</label>
+          <input v-model="pwd" type="password" placeholder="输入密码" />
+        </div>
+
+        <!-- 注册 — 密码 + 确认密码 -->
+        <template v-if="mode === 'register'">
+          <div class="field-stack">
+            <label>设置密码</label>
+            <input v-model="pwd" type="password" placeholder="6-32 位密码" />
+          </div>
+          <div class="field-stack">
+            <label>确认密码</label>
+            <input v-model="confirmPwd" type="password" placeholder="再次输入密码" />
+          </div>
+        </template>
+
         <button class="submit-btn" @click="handleSubmit" :disabled="auth.loading">
-          {{ auth.loading ? '处理中...' : (mode === 'login' ? '登录' : '注册') }}
+          {{ auth.loading ? '处理中...' : (mode === 'register' ? '注册' : '登录') }}
         </button>
+
+        <p v-if="mode === 'pwd'" class="forgot-link">
+          <a href="#" @click.prevent="showReset = true">忘记密码？</a>
+        </p>
 
         <div class="hint-box" v-if="mockCode">
           <span>开发环境验证码</span>
@@ -78,6 +85,35 @@
         </p>
       </div>
     </div>
+
+    <!-- 忘记密码弹窗 -->
+    <div class="modal-overlay" v-if="showReset" @click.self="showReset = false">
+      <div class="modal-card">
+        <h3>重置密码</h3>
+        <div class="field-stack">
+          <label>手机号</label>
+          <input v-model="resetPhone" type="tel" placeholder="输入手机号" maxlength="11" />
+        </div>
+        <div class="field-stack">
+          <label>验证码</label>
+          <div class="code-row">
+            <input v-model="resetCode" placeholder="6 位验证码" maxlength="6" />
+            <button class="send-btn" @click="sendResetCode" :disabled="sendingReset">
+              {{ sendingReset ? '发送中...' : '获取验证码' }}
+            </button>
+          </div>
+        </div>
+        <div class="field-stack">
+          <label>新密码</label>
+          <input v-model="resetPwd" type="password" placeholder="6-32 位新密码" />
+        </div>
+        <button class="submit-btn" @click="doResetPassword" :disabled="resetting">
+          {{ resetting ? '重置中...' : '重置密码' }}
+        </button>
+        <p v-if="resetMsg" class="msg" :class="{ error: resetError }">{{ resetMsg }}</p>
+        <p class="forgot-link"><a href="#" @click.prevent="showReset = false">返回登录</a></p>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -85,15 +121,17 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { sendCode } from '../api'
+import { sendCode, resetPassword } from '../api'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const mode = ref('login')
-const phone = ref('13900000000')
+const mode = ref('sms')
+const phone = ref('')
 const code = ref('')
+const pwd = ref('')
+const confirmPwd = ref('')
 const mockCode = ref('')
 const msg = ref('')
 const isError = ref(false)
@@ -101,81 +139,127 @@ const sending = ref(false)
 
 const send = async () => {
   if (!phone.value || phone.value.length < 11) {
-    msg.value = '请输入正确的手机号'
-    isError.value = true
-    return
+    msg.value = '请输入正确的手机号'; isError.value = true; return
   }
   sending.value = true
   try {
-    const bizType = mode.value === 'login' ? 'LOGIN' : 'REGISTER'
+    const bizType = mode.value === 'register' ? 'REGISTER' : 'LOGIN'
     const res = await sendCode(phone.value, bizType)
     mockCode.value = res.mockCode
-    msg.value = '验证码已发送'
-    isError.value = false
+    msg.value = '验证码已发送'; isError.value = false
   } catch (e) {
-    msg.value = e.message
-    isError.value = true
-  } finally {
-    sending.value = false
-  }
+    msg.value = e.message; isError.value = true
+  } finally { sending.value = false }
 }
 
 const handleSubmit = async () => {
-  if (!code.value) {
-    msg.value = '请输入验证码'
-    isError.value = true
-    return
-  }
+  msg.value = ''; isError.value = false
   try {
-    if (mode.value === 'login') {
+    if (mode.value === 'pwd') {
+      if (!pwd.value) { msg.value = '请输入密码'; isError.value = true; return }
+      await auth.loginByPassword(phone.value, pwd.value)
+    } else if (mode.value === 'sms') {
+      if (!code.value) { msg.value = '请输入验证码'; isError.value = true; return }
       await auth.login(phone.value, code.value)
     } else {
-      await auth.register(phone.value, code.value)
+      if (!code.value) { msg.value = '请输入验证码'; isError.value = true; return }
+      if (!pwd.value || !confirmPwd.value) { msg.value = '请设置密码'; isError.value = true; return }
+      if (pwd.value !== confirmPwd.value) { msg.value = '两次密码不一致'; isError.value = true; return }
+      if (pwd.value.length < 6) { msg.value = '密码至少 6 位'; isError.value = true; return }
+      await auth.register(phone.value, code.value, pwd.value, confirmPwd.value)
     }
-    const redirect = route.query.redirect || '/'
-    router.push(redirect)
+    router.push(route.query.redirect || '/')
   } catch (e) {
-    msg.value = e.message
-    isError.value = true
+    msg.value = e.message; isError.value = true
   }
+}
+
+// ---- 忘记密码 ----
+const showReset = ref(false)
+const resetPhone = ref('')
+const resetCode = ref('')
+const resetPwd = ref('')
+const resetMsg = ref('')
+const resetError = ref(false)
+const sendingReset = ref(false)
+const resetting = ref(false)
+
+const sendResetCode = async () => {
+  if (!resetPhone.value || resetPhone.value.length < 11) {
+    resetMsg.value = '请输入正确的手机号'; resetError.value = true; return
+  }
+  sendingReset.value = true
+  try {
+    await sendCode(resetPhone.value, 'RESET_PASSWORD')
+    resetMsg.value = '验证码已发送'; resetError.value = false
+  } catch (e) {
+    resetMsg.value = e.message; resetError.value = true
+  } finally { sendingReset.value = false }
+}
+
+const doResetPassword = async () => {
+  if (!resetCode.value) { resetMsg.value = '请输入验证码'; resetError.value = true; return }
+  if (!resetPwd.value || resetPwd.value.length < 6) { resetMsg.value = '密码至少 6 位'; resetError.value = true; return }
+  resetting.value = true
+  try {
+    await resetPassword(resetPhone.value, resetCode.value, resetPwd.value)
+    resetMsg.value = '密码重置成功，请使用新密码登录'; resetError.value = false
+    setTimeout(() => { showReset.value = false; mode.value = 'pwd'; phone.value = resetPhone.value }, 1500)
+  } catch (e) {
+    resetMsg.value = e.message; resetError.value = true
+  } finally { resetting.value = false }
 }
 </script>
 
 <style scoped>
 .page {
-  min-height: calc(100vh - 56px);
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px;
+  padding: 72px 24px 40px;
+  background: url('https://w.wallhaven.cc/full/9o/wallhaven-9or96k.jpg') center / cover no-repeat;
+  z-index: 0;
 }
+/* 遮罩让卡片可读 */
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 0;
+}
+.page > * { position: relative; z-index: 1; }
 
 .auth-card {
   width: min(880px, 100%);
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  background: var(--web-paper);
-  border: 1px solid var(--web-line);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: var(--web-radius);
-  box-shadow: var(--web-shadow-lg);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
 .auth-intro {
   padding: 48px 40px;
-  background: linear-gradient(160deg, rgba(74, 144, 217, 0.06) 0%, rgba(240, 140, 160, 0.08) 100%);
-  border-right: 1px solid var(--web-line);
+  background: rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-.intro-icon { font-size: 36px; color: var(--web-accent-3); margin-bottom: 18px; }
+.intro-icon { font-size: 36px; color: rgba(255, 255, 255, 0.7); margin-bottom: 18px; }
 .eyebrow {
   margin: 0;
   font-size: 12px;
   letter-spacing: .16em;
-  color: var(--web-accent-3);
+  color: rgba(255, 255, 255, 0.5);
 }
 .auth-intro h1 {
   margin: 10px 0 16px;
@@ -183,20 +267,21 @@ const handleSubmit = async () => {
   font-size: 42px;
   line-height: 1.1;
   letter-spacing: .03em;
+  color: rgba(255, 255, 255, 0.9);
 }
 .lead {
   margin: 0 0 28px;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 16px;
   line-height: 1.75;
 }
 
 .feature-list { display: flex; flex-direction: column; gap: 12px; }
-.feature-item { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--web-ink); }
+.feature-item { display: flex; align-items: center; gap: 10px; font-size: 15px; color: rgba(255, 255, 255, 0.7); }
 .feature-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--web-accent-3);
+  background: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
 }
 
@@ -216,33 +301,34 @@ const handleSubmit = async () => {
   flex: 1;
   padding: 12px;
   font-size: 15px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.6);
-  color: var(--web-muted);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
   border-radius: 999px;
   transition: all .22s ease;
 }
-.tab-btn.active { background: var(--web-accent); color: #fff; border-color: var(--web-accent); font-weight: 700; }
-.tab-btn:not(.active):hover { color: var(--web-accent); border-color: var(--web-accent); }
+.tab-btn.active { background: rgba(255, 255, 255, 0.9); color: #1a1a2e; border-color: transparent; font-weight: 700; }
+.tab-btn:not(.active):hover { color: rgba(255, 255, 255, 0.9); border-color: rgba(255, 255, 255, 0.4); }
 
 .field-stack { display: flex; flex-direction: column; gap: 6px; }
-label { font-size: 13px; color: var(--web-muted); letter-spacing: .06em; }
+label { font-size: 13px; color: rgba(255, 255, 255, 0.6); letter-spacing: .06em; }
 
 input {
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.9);
-  color: var(--web-ink);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 16px;
   border-radius: var(--web-radius);
-  transition: border-color .18s ease, outline .18s ease;
+  transition: border-color .18s ease, background .18s ease;
 }
+input::placeholder { color: rgba(255, 255, 255, 0.3); }
 input:focus {
-  outline: 2px solid rgba(74, 144, 217, 0.18);
-  border-color: var(--web-accent);
-  box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.06);
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .code-row { display: flex; gap: 10px; }
@@ -250,51 +336,74 @@ input:focus {
 
 .send-btn {
   padding: 14px 18px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.9);
-  color: var(--web-accent);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
   border-radius: 999px;
   transition: all .22s ease;
 }
-.send-btn:hover:not(:disabled) { background: var(--web-accent); color: #fff; border-color: var(--web-accent); }
-.send-btn:disabled { opacity: .5; cursor: not-allowed; }
+.send-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.send-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 .submit-btn {
   padding: 16px;
-  background: var(--web-accent-3);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1a1a2e;
   font-size: 17px;
   font-weight: 700;
   border: none;
   cursor: pointer;
   border-radius: 999px;
   transition: all .22s ease;
-  box-shadow: 0 6px 20px rgba(240, 140, 160, 0.25);
 }
-.submit-btn:hover:not(:disabled) { background: #e47890; transform: scale(1.03); }
-.submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+.submit-btn:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
+.submit-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .hint-box {
   padding: 14px 16px;
-  border-left: 4px solid var(--web-accent);
-  background: rgba(74, 144, 217, 0.06);
+  border-left: 4px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
   border-radius: var(--web-radius);
 }
-.hint-box span { display: block; font-size: 11px; letter-spacing: .12em; color: var(--web-muted); }
-.hint-box strong { display: block; margin-top: 4px; font-size: 24px; color: var(--web-accent); }
+.hint-box span { display: block; font-size: 11px; letter-spacing: .12em; color: rgba(255, 255, 255, 0.4); }
+.hint-box strong { display: block; margin-top: 4px; font-size: 24px; color: rgba(255, 255, 255, 0.9); }
 
-.msg { margin: 0; font-size: 14px; color: var(--web-accent-2); }
-.msg.error { color: #c0392b; }
+.msg { margin: 0; font-size: 14px; color: rgba(255, 200, 150, 0.9); }
+.msg.error { color: rgba(255, 120, 100, 0.9); }
 
-.back-link { margin: 0; font-size: 14px; color: var(--web-muted); }
-.back-link a:hover { color: var(--web-ink); }
+.forgot-link { margin: 0; font-size: 14px; text-align: right; }
+.forgot-link a { color: rgba(255, 255, 255, 0.4); }
+.forgot-link a:hover { color: rgba(255, 255, 255, 0.8); }
+
+.back-link { margin: 0; font-size: 14px; }
+.back-link a { color: rgba(255, 255, 255, 0.4); }
+.back-link a:hover { color: rgba(255, 255, 255, 0.8); }
+
+/* 忘记密码弹窗 */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.modal-card {
+  width: min(400px, 90vw);
+  background: rgba(30, 30, 50, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--web-radius);
+  padding: 32px;
+  display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+}
+.modal-card h3 { margin: 0; font-size: 20px; color: rgba(255, 255, 255, 0.9); }
 
 @media (max-width: 700px) {
   .auth-card { grid-template-columns: 1fr; }
-  .auth-intro { border-right: none; border-bottom: 1px solid var(--web-line); padding: 36px 28px; }
+  .auth-intro { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 36px 28px; }
   .auth-form { padding: 36px 28px; }
   .auth-intro h1 { font-size: 32px; }
 }

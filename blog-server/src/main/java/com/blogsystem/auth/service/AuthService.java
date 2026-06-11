@@ -2,7 +2,9 @@ package com.blogsystem.auth.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.blogsystem.auth.dto.LoginUserVO;
+import com.blogsystem.auth.dto.PasswordLoginRequest;
 import com.blogsystem.auth.dto.PhoneCodeAuthRequest;
+import com.blogsystem.auth.dto.ResetPasswordRequest;
 import com.blogsystem.auth.dto.SendSmsCodeRequest;
 import com.blogsystem.auth.entity.SmsCodeLog;
 import com.blogsystem.auth.entity.SysRole;
@@ -18,6 +20,7 @@ import com.blogsystem.log.mapper.LoginLogMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -76,10 +79,20 @@ public class AuthService {
     }
 
     /**
-     * 手机验证码注册，自动分配用户名和"用户"角色
+     * 手机验证码注册，需设置密码
      */
     public LoginUserVO registerByPhoneCode(PhoneCodeAuthRequest request) {
         verifyCode(request.phone(), "REGISTER", request.code());
+        if (request.password() == null || request.password().isBlank()
+                || request.confirmPassword() == null || request.confirmPassword().isBlank()) {
+            throw new IllegalArgumentException("请设置密码");
+        }
+        if (!request.password().equals(request.confirmPassword())) {
+            throw new IllegalArgumentException("两次密码不一致");
+        }
+        if (request.password().length() < 6 || request.password().length() > 32) {
+            throw new IllegalArgumentException("密码长度需要 6-32 位");
+        }
         SysUser exists = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getPhone, request.phone())
                 .last("limit 1"));
@@ -89,7 +102,7 @@ public class AuthService {
         SysUser user = new SysUser();
         user.setPhone(request.phone());
         user.setUsername("u" + request.phone().substring(3));
-        user.setPassword(md5(request.phone() + "#init"));
+        user.setPassword(new BCryptPasswordEncoder().encode(request.password()));
         user.setNickname("用户" + request.phone().substring(7));
         user.setStatus(1);
         user.setDeleted(0);
@@ -108,6 +121,7 @@ public class AuthService {
 
         StpUtil.login(user.getId());
         String token = StpUtil.getTokenValue();
+        writeLoginLog(user, true, null, "phone");
         return new LoginUserVO(user.getId(), user.getPhone(), user.getUsername(), user.getNickname(), null, null, token);
     }
 
@@ -115,21 +129,92 @@ public class AuthService {
      * 手机验证码登录，更新最后登录时间
      */
     public LoginUserVO loginByPhoneCode(PhoneCodeAuthRequest request) {
+        // 登录频率限制：每 IP 每分钟最多 5 次
+        String loginRateKey = "rate:login:ip:" + httpServletRequest.getRemoteAddr();
+        String count = redisTemplate.opsForValue().get(loginRateKey);
+        if (count != null && Integer.parseInt(count) >= 5) {
+            throw new IllegalArgumentException("登录尝试过于频繁，请稍后再试");
+        }
+        redisTemplate.opsForValue().increment(loginRateKey);
+        redisTemplate.expire(loginRateKey, Duration.ofMinutes(1));
+
         verifyCode(request.phone(), "LOGIN", request.code());
         SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getPhone, request.phone())
                 .eq(SysUser::getDeleted, 0)
                 .last("limit 1"));
         if (user == null) {
-            writeLoginLog(null, false, "用户不存在");
+            writeLoginLog(null, false, "用户不存在", "phone");
             throw new IllegalArgumentException("用户不存在，请先注册");
         }
         user.setLastLoginTime(LocalDateTime.now());
         sysUserMapper.updateById(user);
         StpUtil.login(user.getId());
         String token = StpUtil.getTokenValue();
-        writeLoginLog(user, true, null);
+        writeLoginLog(user, true, null, "phone");
         return new LoginUserVO(user.getId(), user.getPhone(), user.getUsername(), user.getNickname(), user.getEmail(), user.getAvatar(), token);
+    }
+
+    /**
+     * 密码登录
+     */
+    public LoginUserVO loginByPassword(PasswordLoginRequest request) {
+        // 登录频率限制
+        String loginRateKey = "rate:login:ip:" + httpServletRequest.getRemoteAddr();
+        String count = redisTemplate.opsForValue().get(loginRateKey);
+        if (count != null && Integer.parseInt(count) >= 5) {
+            throw new IllegalArgumentException("登录尝试过于频繁，请稍后再试");
+        }
+        redisTemplate.opsForValue().increment(loginRateKey);
+        redisTemplate.expire(loginRateKey, Duration.ofMinutes(1));
+
+        SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getPhone, request.phone())
+                .eq(SysUser::getDeleted, 0)
+                .last("limit 1"));
+        if (user == null) {
+            writeLoginLog(null, false, "用户不存在", "password");
+            throw new IllegalArgumentException("用户不存在，请先注册");
+        }
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String stored = user.getPassword();
+        boolean matched;
+        if (stored != null && stored.startsWith("$2")) {
+            matched = encoder.matches(request.password(), stored);
+        } else {
+            matched = stored != null && stored.equals(md5(request.password()));
+            if (matched) {
+                user.setPassword(encoder.encode(request.password()));
+            }
+        }
+        if (!matched) {
+            writeLoginLog(user, false, "密码错误", "password");
+            throw new IllegalArgumentException("密码错误");
+        }
+
+        user.setLastLoginTime(LocalDateTime.now());
+        sysUserMapper.updateById(user);
+        StpUtil.login(user.getId());
+        String token = StpUtil.getTokenValue();
+        writeLoginLog(user, true, null, "password");
+        return new LoginUserVO(user.getId(), user.getPhone(), user.getUsername(), user.getNickname(), user.getEmail(), user.getAvatar(), token);
+    }
+
+    /**
+     * 忘记密码 — 验证码校验后重置密码
+     */
+    public void resetPassword(ResetPasswordRequest request) {
+        verifyCode(request.phone(), "RESET_PASSWORD", request.code());
+        SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getPhone, request.phone())
+                .eq(SysUser::getDeleted, 0)
+                .last("limit 1"));
+        if (user == null) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+        user.setPassword(new BCryptPasswordEncoder().encode(request.newPassword()));
+        sysUserMapper.updateById(user);
     }
 
     /**
@@ -169,20 +254,27 @@ public class AuthService {
         if (user == null || user.getDeleted() == 1) {
             throw new IllegalArgumentException("用户不存在");
         }
-        if (!user.getPassword().equals(md5(oldPassword))) {
-            throw new IllegalArgumentException("原密码错误");
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String stored = user.getPassword();
+        boolean matched = false;
+        // 优先 BCrypt，匹配失败降级 MD5（兼容老用户），同时自动升级为 BCrypt
+        if (stored.startsWith("$2")) {
+            matched = encoder.matches(oldPassword, stored);
+        } else {
+            matched = stored.equals(md5(oldPassword));
         }
-        user.setPassword(md5(newPassword));
+        if (!matched) throw new IllegalArgumentException("原密码错误");
+        user.setPassword(encoder.encode(newPassword));
         sysUserMapper.updateById(user);
     }
 
-    private void writeLoginLog(SysUser user, boolean success, String failReason) {
+    private void writeLoginLog(SysUser user, boolean success, String failReason, String loginType) {
         try {
             LoginLog log = new LoginLog();
             log.setUserId(user != null ? user.getId() : null);
             log.setUsername(user != null ? user.getUsername() : null);
             log.setLoginStatus(success ? 1 : 0);
-            log.setLoginType("phone");
+            log.setLoginType(loginType != null ? loginType : "phone");
             log.setIp(httpServletRequest.getRemoteAddr());
             log.setUserAgent(httpServletRequest.getHeader("User-Agent"));
             log.setFailReason(failReason);

@@ -10,8 +10,10 @@ import com.blogsystem.comment.dto.CommentVO;
 import com.blogsystem.comment.entity.Comment;
 import com.blogsystem.comment.mapper.CommentMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,14 +26,25 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final SysUserMapper sysUserMapper;
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 发表评论
      */
     public Long save(CommentSaveRequest request, String ip, String userAgent) {
+        // 评论频率限制：每用户每分钟最多 3 条
+        Long userId = StpUtil.getLoginIdAsLong();
+        String rateKey = "rate:comment:user:" + userId;
+        String count = redisTemplate.opsForValue().get(rateKey);
+        if (count != null && Integer.parseInt(count) >= 3) {
+            throw new IllegalArgumentException("评论过于频繁，请稍后再试");
+        }
+        redisTemplate.opsForValue().increment(rateKey);
+        redisTemplate.expire(rateKey, Duration.ofMinutes(1));
+
         Comment comment = new Comment();
         comment.setArticleId(request.articleId());
-        comment.setUserId(StpUtil.getLoginIdAsLong());
+        comment.setUserId(userId);
         comment.setParentId(request.parentId() == null ? 0L : request.parentId());
         comment.setReplyToUserId(request.replyToUserId());
         comment.setContent(request.content());

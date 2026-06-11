@@ -179,13 +179,13 @@ const save = async () => {
 .back-link {
   display: inline-flex;
   margin-bottom: 18px;
-  color: var(--web-accent);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 15px;
   transition: all .2s ease;
   padding: 6px 14px;
   border-radius: 999px;
 }
-.back-link:hover { color: var(--web-accent-3); background: rgba(240, 140, 160, 0.08); }
+.back-link:hover { color: var(--web-accent-3); background: rgba(255, 255, 255, 0.08); }
 .eyebrow {
   margin: 0 0 12px;
   font-size: 12px;
@@ -199,14 +199,14 @@ const save = async () => {
   line-height: 1.1;
   letter-spacing: .03em;
 }
-.sub { margin: 12px 0 0; color: var(--web-muted); font-size: 16px; }
+.sub { margin: 12px 0 0; color: rgba(255, 255, 255, 0.5); font-size: 16px; }
 .hero-line { margin-top: 24px; width: 48px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--web-accent-3), var(--web-accent)); }
 
 .profile-card {
   padding: 36px 32px;
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--web-radius);
-  background: var(--web-paper);
+  background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--web-shadow);
 }
 
@@ -245,44 +245,44 @@ const save = async () => {
 .avatar-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(255, 255, 255, 0.15);
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 20px;
   opacity: 0;
   transition: opacity .22s;
 }
 .avatar-wrap:hover .avatar-overlay { opacity: 1; }
-.avatar-hint { margin: 10px 0 0; color: var(--web-muted); font-size: 13px; }
+.avatar-hint { margin: 10px 0 0; color: rgba(255, 255, 255, 0.5); font-size: 13px; }
 
 .fields { display: flex; flex-direction: column; gap: 18px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label {
   font-size: 12px;
   letter-spacing: .1em;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 600;
 }
 .field input {
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.88);
-  color: var(--web-ink);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   border-radius: var(--web-radius);
   transition: border-color .18s ease;
 }
 .field input:focus {
   outline: 2px solid rgba(74, 144, 217, 0.18);
-  border-color: var(--web-accent);
+  border-color: rgba(255, 255, 255, 0.7);
   box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.06);
 }
 .field input:disabled {
   opacity: .55;
-  background: rgba(0,0,0,0.02);
+  background: rgba(255, 255, 255, 0.04);
   cursor: not-allowed;
 }
-.field-note { font-size: 12px; color: var(--web-muted); }
+.field-note { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
 
 .actions { margin-top: 28px; display: flex; justify-content: flex-end; }
 .primary-btn {
@@ -301,12 +301,12 @@ const save = async () => {
 .primary-btn:disabled { opacity: .5; cursor: not-allowed; }
 
 .divider { margin: 32px 0 24px; border: none; border-top: 1px solid var(--web-line); }
-.section-title { margin: 0 0 16px; font-size: 18px; color: var(--web-ink); }
+.section-title { margin: 0 0 16px; font-size: 18px; color: rgba(255, 255, 255, 0.85); }
 .ghost-btn {
   padding: 12px 20px;
   background: rgba(255,255,255,0.7);
-  color: var(--web-ink);
-  border: 1px solid var(--web-line);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -319,6 +319,11 @@ const save = async () => {
 .msg.error { color: #c0392b; }
 
 .state-box { text-align: center; padding: 120px 24px; }
-.state-text { color: var(--web-muted); font-size: 18px; }
+.state-text { color: rgba(255, 255, 255, 0.5); font-size: 18px; }
 .login-link { color: var(--web-accent-2); font-weight: 700; }
+@media (max-width: 500px) {
+  .page { padding: 32px 14px 48px; }
+  .profile-card { padding: 24px 16px; }
+  .profile-header { flex-direction: column; text-align: center; }
+}
 </style>

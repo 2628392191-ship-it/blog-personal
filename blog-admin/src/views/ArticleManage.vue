@@ -88,7 +88,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.page { max-width: 1100px; }
+.page { max-width: 1100px; overflow-x: auto; }
 
 .page-header {
   display: flex;

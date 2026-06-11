@@ -2,9 +2,11 @@ package com.blogsystem.auth.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.blogsystem.auth.dto.LoginUserVO;
+import com.blogsystem.auth.dto.PasswordLoginRequest;
 import com.blogsystem.auth.dto.PhoneCodeAuthRequest;
 import com.blogsystem.auth.dto.PasswordUpdateRequest;
 import com.blogsystem.auth.dto.ProfileUpdateRequest;
+import com.blogsystem.auth.dto.ResetPasswordRequest;
 import com.blogsystem.auth.dto.SendSmsCodeRequest;
 import com.blogsystem.auth.service.AuthService;
 import com.blogsystem.common.ApiResponse;
@@ -76,6 +78,23 @@ public class AuthController {
     @PutMapping("/password")
     public ApiResponse<Void> changePassword(@RequestBody @Valid PasswordUpdateRequest request) {
         authService.changePassword(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), request.oldPassword(), request.newPassword());
+        return ApiResponse.ok();
+    }
+
+    /**
+     * 密码登录
+     */
+    @PostMapping("/login/password")
+    public ApiResponse<LoginUserVO> loginByPassword(@RequestBody @Valid PasswordLoginRequest request) {
+        return ApiResponse.ok(authService.loginByPassword(request));
+    }
+
+    /**
+     * 忘记密码 — 短信验证后重置密码
+     */
+    @PostMapping("/password/reset")
+    public ApiResponse<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+        authService.resetPassword(request);
         return ApiResponse.ok();
     }
 

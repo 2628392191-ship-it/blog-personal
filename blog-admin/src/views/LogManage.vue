@@ -48,7 +48,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page { max-width: 1100px; }
+.page { overflow-x: auto;  max-width: 1100px; }
 .page-header {
   display: flex; justify-content: space-between; align-items: flex-start;
   margin-bottom: 24px; gap: 16px; flex-wrap: wrap;

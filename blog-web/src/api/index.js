@@ -1,8 +1,10 @@
 import http from './http'
 
 export const sendCode = (phone, bizType) => http.post('/api/auth/sms-code', { phone, bizType })
-export const register = (phone, code) => http.post('/api/auth/register', { phone, code })
+export const register = (phone, code, password, confirmPassword) => http.post('/api/auth/register', { phone, code, password, confirmPassword })
 export const login = (phone, code) => http.post('/api/auth/login', { phone, code })
+export const loginByPassword = (phone, password) => http.post('/api/auth/login/password', { phone, password })
+export const resetPassword = (phone, code, newPassword) => http.post('/api/auth/password/reset', { phone, code, newPassword })
 export const me = () => http.get('/api/auth/me')
 
 export const articleList = (pageNum = 1, pageSize = 10, categoryId, tagId) => http.get('/api/content/article/list', {

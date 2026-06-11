@@ -18,7 +18,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new SaInterceptor()).addPathPatterns("/**");
+        registry.addInterceptor(new SaInterceptor())
+                .addPathPatterns("/**")
+                .excludePathPatterns("/uploads/**");
         registry.addInterceptor(new TokenRedisInterceptor())
                 .addPathPatterns("/api/**")
                 .excludePathPatterns("/api/auth/login", "/api/auth/sms-code");

@@ -44,6 +44,11 @@ public class LogAspect {
 
         try {
             String args = objectMapper.writeValueAsString(point.getArgs());
+            // 敏感字段脱敏：密码、手机号
+            args = args.replaceAll("\"(oldPassword|newPassword|password)\":\"[^\"]*\"",
+                    "\"$1\":\"****\"");
+            args = args.replaceAll("\"phone\":\"(\\d{3})\\d*(\\d{4})\"",
+                    "\"phone\":\"$1****$2\"");
             if (args.length() > 500) args = args.substring(0, 500);
             log.setRequestData(args);
         } catch (Exception ignored) {

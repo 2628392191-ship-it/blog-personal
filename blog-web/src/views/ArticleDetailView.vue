@@ -88,6 +88,7 @@ import { useRoute } from 'vue-router'
 import { addComment, articleDetail, commentList, toggleLike } from '../api'
 import { useAuthStore } from '../stores/auth'
 import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -110,7 +111,7 @@ const fmtTime = (raw) => {
 
 const renderedMarkdown = computed(() => {
   if (!article.value?.contentMd) return ''
-  return md.render(article.value.contentMd)
+  return DOMPurify.sanitize(md.render(article.value.contentMd))
 })
 
 const load = async () => {
@@ -166,13 +167,13 @@ onMounted(load)
 .back-link {
   display: inline-flex;
   margin-bottom: 18px;
-  color: var(--web-accent);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 15px;
   transition: all .2s ease;
   padding: 6px 14px;
   border-radius: 999px;
 }
-.back-link:hover { color: var(--web-accent-3); background: rgba(240, 140, 160, 0.08); }
+.back-link:hover { color: var(--web-accent-3); background: rgba(255, 255, 255, 0.08); }
 .eyebrow {
   margin: 0 0 12px;
   font-size: 12px;
@@ -188,7 +189,7 @@ onMounted(load)
 }
 .summary {
   margin-top: 16px;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 18px;
   line-height: 1.7;
   max-width: 58ch;
@@ -198,7 +199,7 @@ onMounted(load)
   gap: 16px;
   align-items: center;
   margin-top: 14px;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
   letter-spacing: .04em;
 }
@@ -207,9 +208,9 @@ onMounted(load)
   align-items: center;
   gap: 4px;
   padding: 4px 12px;
-  border: 1px solid var(--web-line);
-  background: rgba(255,255,255,0.7);
-  color: var(--web-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
   border-radius: 999px;
   cursor: pointer;
@@ -223,7 +224,7 @@ onMounted(load)
 .like-btn.liked {
   color: #e8618c;
   border-color: rgba(232, 97, 140, 0.3);
-  background: rgba(240, 140, 160, 0.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 .like-btn:disabled { opacity: .5; cursor: not-allowed; }
 .like-icon { font-size: 16px; transition: transform .2s ease; }
@@ -240,7 +241,7 @@ onMounted(load)
   object-fit: cover;
   margin-top: 20px;
   border-radius: var(--web-radius);
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .top-badge {
   display: inline-block;
@@ -256,18 +257,18 @@ onMounted(load)
 .article-body {
   margin: 32px 0 48px;
   padding: 36px 32px;
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--web-radius);
-  background: var(--web-paper);
+  background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--web-shadow);
 }
-.content { line-height: 1.9; color: var(--web-ink); font-size: 17px; }
+.content { line-height: 1.9; color: rgba(255, 255, 255, 0.85); font-size: 17px; }
 .content :deep(h1) { font-size: 36px; margin: 32px 0 16px; line-height: 1.15; }
 .content :deep(h2) { font-size: 28px; margin: 28px 0 14px; line-height: 1.2; }
 .content :deep(h3) { font-size: 22px; margin: 24px 0 12px; line-height: 1.25; }
 .content :deep(p) { margin: 0 0 20px; }
 .content :deep(pre) {
-  background: rgba(74, 144, 217, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   padding: 20px 24px;
   overflow-x: auto;
   font-size: 15px;
@@ -279,7 +280,7 @@ onMounted(load)
 .content :deep(code) {
   font-family: "Consolas", "Monaco", monospace;
   font-size: 0.9em;
-  background: rgba(0,0,0,0.04);
+  background: rgba(255, 255, 255, 0.06);
   padding: 2px 6px;
   border-radius: 3px;
 }
@@ -288,20 +289,20 @@ onMounted(load)
   border-left: 4px solid var(--web-accent);
   padding: 10px 20px;
   margin: 20px 0;
-  color: var(--web-muted);
+  color: rgba(255, 255, 255, 0.5);
   font-style: italic;
-  background: rgba(74, 144, 217, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 0 var(--web-radius) var(--web-radius) 0;
 }
 .content :deep(li) { margin: 6px 0; }
-.content :deep(a) { color: var(--web-accent); text-decoration: underline; }
+.content :deep(a) { color: rgba(255, 255, 255, 0.7); text-decoration: underline; }
 .content :deep(strong) { font-weight: 700; }
 .content :deep(img) { max-width: 100%; height: auto; margin: 20px 0; border-radius: 6px; display: block; }
 
 .comment-card {
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--web-radius);
-  background: var(--web-paper);
+  background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   box-shadow: var(--web-shadow);
   padding: 32px;
 }
@@ -312,7 +313,7 @@ onMounted(load)
   margin-bottom: 20px;
 }
 .comment-head h2 { margin: 0; font-size: 28px; }
-.comment-head span { color: var(--web-muted); font-size: 14px; }
+.comment-head span { color: rgba(255, 255, 255, 0.5); font-size: 14px; }
 
 .guest-banner {
   padding: 24px;
@@ -322,7 +323,7 @@ onMounted(load)
   border-radius: var(--web-radius);
   margin-bottom: 16px;
 }
-.guest-banner p { margin: 0 0 12px; color: var(--web-muted); font-size: 16px; }
+.guest-banner p { margin: 0 0 12px; color: rgba(255, 255, 255, 0.5); font-size: 16px; }
 .login-cta {
   display: inline-block;
   padding: 12px 24px;
@@ -338,9 +339,9 @@ onMounted(load)
 .composer textarea {
   width: 100%;
   padding: 14px 16px;
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255,255,255,0.9);
-  color: var(--web-ink);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   border-radius: var(--web-radius);
   resize: vertical;
@@ -348,16 +349,16 @@ onMounted(load)
 }
 .composer textarea:focus {
   outline: 2px solid rgba(74, 144, 217, 0.18);
-  border-color: var(--web-accent);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 .composer button { align-self: flex-end; min-width: 100px; }
 
 input {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255,255,255,0.88);
-  color: var(--web-ink);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   border-radius: var(--web-radius);
 }
@@ -369,7 +370,7 @@ input:focus {
 button {
   cursor: pointer;
   padding: 12px 18px;
-  border: 1px solid var(--web-line);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   font-size: 14px;
   border-radius: var(--web-radius);
   transition: all .18s ease;
@@ -385,13 +386,13 @@ button:hover { transform: translateY(-1px); }
 }
 .primary-btn:hover { background: #e47890; transform: scale(1.03); }
 
-.ghost-btn { background: rgba(255,255,255,0.7); color: var(--web-ink); }
+.ghost-btn { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.85); }
 .ghost-btn:hover { background: rgba(255,255,255,0.95); }
 
 .msg { margin: 12px 0; font-size: 14px; color: var(--web-accent-2); }
 .msg.error { color: #c0392b; }
 
-.empty-comments { padding: 32px 0; text-align: center; color: var(--web-muted); }
+.empty-comments { padding: 32px 0; text-align: center; color: rgba(255, 255, 255, 0.5); }
 
 .comment-list { list-style: none; padding: 0; margin: 0; }
 .comment-item {
@@ -420,9 +421,9 @@ button:hover { transform: translateY(-1px); }
 }
 .comment-main { flex: 1; min-width: 0; }
 .comment-meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
-.comment-author { font-weight: 600; font-size: 14px; color: var(--web-ink); }
-.comment-time { font-size: 12px; color: var(--web-muted); }
-.comment-text { margin: 0 0 10px; line-height: 1.7; font-size: 15px; color: var(--web-ink); }
+.comment-author { font-weight: 600; font-size: 14px; color: rgba(255, 255, 255, 0.85); }
+.comment-time { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+.comment-text { margin: 0 0 10px; line-height: 1.7; font-size: 15px; color: rgba(255, 255, 255, 0.85); }
 
 .reply-row {
   margin-top: 4px;
@@ -432,12 +433,17 @@ button:hover { transform: translateY(-1px); }
 .reply-row input { flex: 1; }
 
 .state-box { text-align: center; padding: 120px 24px; }
-.state-text { color: var(--web-muted); font-size: 18px; }
+.state-text { color: rgba(255, 255, 255, 0.5); font-size: 18px; }
 
 @media (max-width: 720px) {
   .comment-head { flex-direction: column; align-items: flex-start; gap: 6px; }
   .reply-row { margin-left: 0; }
   .article-body { padding: 24px 20px; }
   .comment-card { padding: 24px 20px; }
+}
+@media (max-width: 480px) {
+  .page { padding: 32px 14px 48px; }
+  .article-body { padding: 20px 14px; }
+  .comment-card { padding: 20px 14px; }
 }
 </style>

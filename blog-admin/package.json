@@ -19,6 +19,7 @@
     "axios": "^1.7.2",
     "bytemd": "^1.22.0",
     "codemirror": "^6.0.2",
+    "dompurify": "^3.4.9",
     "element-plus": "^2.7.8",
     "pinia": "^2.1.7",
     "vue": "^3.4.31",

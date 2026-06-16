@@ -41,6 +41,11 @@ public class AdminService {
         sysUserMapper.updateById(user);
     }
 
+    public long countUsers() {
+        return sysUserMapper.selectCount(
+                new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeleted, 0));
+    }
+
     /**
      * 软删除用户
      */

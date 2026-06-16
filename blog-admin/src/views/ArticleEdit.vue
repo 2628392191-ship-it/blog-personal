@@ -112,6 +112,14 @@
         <el-button type="primary" @click="updateImageSrc">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 图片预览 -->
+    <Teleport to="body">
+      <div class="preview-overlay" v-if="showPreview" @click="showPreview = false">
+        <img :src="previewSrc" @click.stop alt="preview" />
+        <button class="preview-close" @click="showPreview = false">&times;</button>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -144,17 +152,39 @@ const form = reactive({
   categoryId: null, status: 1, isTop: 0, isCommentEnabled: 1, tagIds: []
 })
 
-// ---- Resizable image node view ----
+// ---- Resizable image node view with preview ----
+const previewSrc = ref('')
+const showPreview = ref(false)
 const ResizableImageVue = {
   props: ['node', 'updateAttributes'],
   setup(props) {
     const imgRef = ref(null)
-    const onResize = () => {
+    const resizing = ref(false)
+    let startX = 0, startW = 0
+
+    const onResizeStart = (e) => {
+      e.preventDefault(); e.stopPropagation()
+      resizing.value = true
+      startX = e.clientX
+      startW = imgRef.value?.clientWidth || 200
+      document.addEventListener('mousemove', onResizeMove)
+      document.addEventListener('mouseup', onResizeEnd)
+    }
+    const onResizeMove = (e) => {
       if (!imgRef.value) return
-      const w = imgRef.value.clientWidth
       const parentW = imgRef.value.parentElement?.parentElement?.clientWidth || 800
-      const pct = Math.round((w / parentW) * 100)
+      const newW = startW + (e.clientX - startX)
+      const pct = Math.max(10, Math.min(100, Math.round((newW / parentW) * 100)))
       props.updateAttributes({ width: pct + '%' })
+    }
+    const onResizeEnd = () => {
+      resizing.value = false
+      document.removeEventListener('mousemove', onResizeMove)
+      document.removeEventListener('mouseup', onResizeEnd)
+    }
+    const onPreview = () => {
+      previewSrc.value = props.node.attrs.src
+      showPreview.value = true
     }
     const caption = props.node.attrs.caption || ''
     return () => h(NodeViewWrapper, { class: 'image-node', 'data-drag-handle': '' }, [
@@ -166,10 +196,10 @@ const ResizableImageVue = {
           ref: imgRef,
           src: props.node.attrs.src,
           class: 'resizable-image',
-          draggable: 'true',
-          onMouseup: onResize
+          onClick: onPreview,
+          title: '点击放大预览'
         }),
-        h('div', { class: 'resize-trigger' })
+        h('div', { class: 'resize-handle', onMousedown: onResizeStart, title: '拖动调整大小' })
       ]),
       h('figcaption', { class: 'image-caption' }, caption || '')
     ])
@@ -177,6 +207,8 @@ const ResizableImageVue = {
 }
 
 const ResizableImageExt = Image.extend({
+  inline: true,
+  group: 'inline',
   addAttributes() {
     return { ...this.parent?.(), width: { default: null }, caption: { default: '' } }
   },
@@ -212,6 +244,13 @@ const editor = useEditor({
         handleImageFiles(imageFiles)
         return true
       }
+      // 粘贴纯文本 URL → 自动转为链接
+      const text = event.clipboardData?.getData('text/plain')?.trim()
+      if (text && /^https?:\/\/\S+$/.test(text)) {
+        event.preventDefault()
+        editor.value.chain().focus().insertContent(`<a href="${text}" target="_blank" rel="noopener">${text}</a> `).run()
+        return true
+      }
       return false
     }
   }
@@ -234,7 +273,7 @@ const handleImageFiles = async (files) => {
       fd.append('subDir', 'articles')
       const data = await http.post('/api/file/upload', fd)
       uploadedUrls.add(data.url)
-      editor.value.chain().focus().setImage({ src: data.url }).run()
+      editor.value.chain().focus().setImage({ src: data.url }).insertContent(' ').run()
     } catch (e) {
       ElMessage.error(`图片上传失败: ${e.message}`)
     }
@@ -242,8 +281,15 @@ const handleImageFiles = async (files) => {
 }
 
 const setLink = () => {
-  const url = window.prompt('输入链接地址:')
-  if (url) editor.value.chain().focus().setLink({ href: url }).run()
+  const url = window.prompt('输入链接地址:', 'https://')
+  if (!url || !editor.value) return
+  const { empty } = editor.value.state.selection
+  if (empty) {
+    // 无选中文字：插入链接文字并在后面加空格，后续输入不受影响
+    editor.value.chain().focus().insertContent(`<a href="${url}" target="_blank" rel="noopener">${url}</a>&nbsp;`).run()
+  } else {
+    editor.value.chain().focus().setLink({ href: url }).run()
+  }
 }
 
 const imageDialog = ref(false)
@@ -322,9 +368,14 @@ const submit = async () => {
 const extractImageUrls = (html) => {
   if (!html) return []
   const urls = []
-  const re = /<img[^>]+src="(\/uploads\/[^"]+)"/g
+  const re = /<img[^>]+src="([^"]*\/uploads\/[^"]+)"/g
   let m
-  while ((m = re.exec(html)) !== null) urls.push(m[1])
+  while ((m = re.exec(html)) !== null) {
+    const src = m[1]
+    // 去掉可能的前缀域名，只保留 /uploads/... 路径
+    const path = src.replace(/^https?:\/\/[^/]+/, '')
+    urls.push(path)
+  }
   return urls
 }
 
@@ -502,39 +553,68 @@ onBeforeUnmount(() => {
 /* Image node wrapper */
 .editor-body :deep(.image-node) {
   display: inline-block;
+  vertical-align: middle;
   max-width: 100%;
-  margin: 12px 0;
+  margin: 4px;
 }
 .editor-body :deep(.image-resize-wrap) {
   display: inline-block;
   position: relative;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 6px;
-  resize: both;
 }
 .editor-body :deep(.resizable-image) {
   display: block;
   width: 100%;
   height: auto;
-  cursor: pointer;
+  cursor: zoom-in;
   transition: outline .15s;
+  border-radius: 6px;
 }
 .editor-body :deep(.image-node:hover .resizable-image),
 .editor-body :deep(.image-node.ProseMirror-selectednode .resizable-image) {
   outline: 2px solid var(--admin-accent);
   outline-offset: 2px;
 }
-.editor-body :deep(.resize-trigger) {
+.editor-body :deep(.resize-handle) {
   position: absolute;
-  right: 0; bottom: 0;
-  width: 12px; height: 12px;
+  right: -4px; bottom: -4px;
+  width: 20px; height: 20px;
   background: var(--admin-accent);
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
-  border-radius: 0 0 4px 0;
-  opacity: 0.6;
-  pointer-events: none;
+  border-radius: 0 0 6px 0;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity .15s;
+  z-index: 2;
 }
+.editor-body :deep(.image-node:hover .resize-handle),
+.editor-body :deep(.image-node.ProseMirror-selectednode .resize-handle) {
+  opacity: 0.8;
+}
+
+/* ---- image preview overlay ---- */
+.preview-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.85);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.preview-overlay img {
+  max-width: 90vw; max-height: 90vh;
+  object-fit: contain; border-radius: 4px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+}
+.preview-close {
+  position: absolute; top: 20px; right: 20px;
+  background: rgba(255,255,255,0.15); border: none;
+  color: #fff; font-size: 32px; width: 44px; height: 44px;
+  border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.preview-close:hover { background: rgba(255,255,255,0.3); }
 .editor-body :deep(.image-caption) {
   text-align: center;
   font-size: 13px;

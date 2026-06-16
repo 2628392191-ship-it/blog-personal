@@ -24,7 +24,7 @@
     </header>
 
     <section class="article-body">
-      <div class="content" v-html="renderedMarkdown"></div>
+      <div class="content" v-html="renderedMarkdown" @click="onImageClick"></div>
     </section>
 
     <section class="comment-card" v-if="article.isCommentEnabled !== 0">
@@ -80,6 +80,14 @@
   <section class="page state-box" v-else>
     <p class="state-text">加载中...</p>
   </section>
+
+  <!-- 图片点击放大预览 -->
+  <Teleport to="body">
+    <div class="img-preview-overlay" v-if="previewSrc" @click="previewSrc = ''">
+      <img :src="previewSrc" @click.stop alt="preview" />
+      <button class="img-preview-close" @click="previewSrc = ''">&times;</button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -157,6 +165,11 @@ const submitReply = async (comment) => {
   }
 }
 
+const previewSrc = ref('')
+const onImageClick = (e) => {
+  if (e.target.tagName === 'IMG' && e.target.src) previewSrc.value = e.target.src
+}
+
 onMounted(load)
 </script>
 
@@ -167,7 +180,7 @@ onMounted(load)
 .back-link {
   display: inline-flex;
   margin-bottom: 18px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   transition: all .2s ease;
   padding: 6px 14px;
@@ -186,10 +199,11 @@ onMounted(load)
   font-size: clamp(38px, 5vw, 68px);
   line-height: 1.1;
   letter-spacing: .03em;
+  color: rgba(255, 255, 255, 0.95);
 }
 .summary {
   margin-top: 16px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 18px;
   line-height: 1.7;
   max-width: 58ch;
@@ -199,7 +213,7 @@ onMounted(load)
   gap: 16px;
   align-items: center;
   margin-top: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 14px;
   letter-spacing: .04em;
 }
@@ -210,7 +224,7 @@ onMounted(load)
   padding: 4px 12px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 14px;
   border-radius: 999px;
   cursor: pointer;
@@ -289,15 +303,15 @@ onMounted(load)
   border-left: 4px solid var(--web-accent);
   padding: 10px 20px;
   margin: 20px 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-style: italic;
   background: rgba(255, 255, 255, 0.04);
   border-radius: 0 var(--web-radius) var(--web-radius) 0;
 }
 .content :deep(li) { margin: 6px 0; }
-.content :deep(a) { color: rgba(255, 255, 255, 0.7); text-decoration: underline; }
+.content :deep(a) { color: rgba(255, 255, 255, 0.85); text-decoration: underline; }
 .content :deep(strong) { font-weight: 700; }
-.content :deep(img) { max-width: 100%; height: auto; margin: 20px 0; border-radius: 6px; display: block; }
+.content :deep(img) { max-width: 100%; height: auto; margin: 20px 0; border-radius: 6px; display: block; cursor: zoom-in; }
 
 .comment-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -313,7 +327,7 @@ onMounted(load)
   margin-bottom: 20px;
 }
 .comment-head h2 { margin: 0; font-size: 28px; }
-.comment-head span { color: rgba(255, 255, 255, 0.5); font-size: 14px; }
+.comment-head span { color: rgba(255, 255, 255, 0.65); font-size: 14px; }
 
 .guest-banner {
   padding: 24px;
@@ -323,7 +337,7 @@ onMounted(load)
   border-radius: var(--web-radius);
   margin-bottom: 16px;
 }
-.guest-banner p { margin: 0 0 12px; color: rgba(255, 255, 255, 0.5); font-size: 16px; }
+.guest-banner p { margin: 0 0 12px; color: rgba(255, 255, 255, 0.65); font-size: 16px; }
 .login-cta {
   display: inline-block;
   padding: 12px 24px;
@@ -349,7 +363,7 @@ onMounted(load)
 }
 .composer textarea:focus {
   outline: 2px solid rgba(74, 144, 217, 0.18);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.85);
 }
 .composer button { align-self: flex-end; min-width: 100px; }
 
@@ -392,7 +406,7 @@ button:hover { transform: translateY(-1px); }
 .msg { margin: 12px 0; font-size: 14px; color: var(--web-accent-2); }
 .msg.error { color: #c0392b; }
 
-.empty-comments { padding: 32px 0; text-align: center; color: rgba(255, 255, 255, 0.5); }
+.empty-comments { padding: 32px 0; text-align: center; color: rgba(255, 255, 255, 0.65); }
 
 .comment-list { list-style: none; padding: 0; margin: 0; }
 .comment-item {
@@ -422,7 +436,7 @@ button:hover { transform: translateY(-1px); }
 .comment-main { flex: 1; min-width: 0; }
 .comment-meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
 .comment-author { font-weight: 600; font-size: 14px; color: rgba(255, 255, 255, 0.85); }
-.comment-time { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+.comment-time { font-size: 12px; color: rgba(255, 255, 255, 0.65); }
 .comment-text { margin: 0 0 10px; line-height: 1.7; font-size: 15px; color: rgba(255, 255, 255, 0.85); }
 
 .reply-row {
@@ -433,7 +447,7 @@ button:hover { transform: translateY(-1px); }
 .reply-row input { flex: 1; }
 
 .state-box { text-align: center; padding: 120px 24px; }
-.state-text { color: rgba(255, 255, 255, 0.5); font-size: 18px; }
+.state-text { color: rgba(255, 255, 255, 0.65); font-size: 18px; }
 
 @media (max-width: 720px) {
   .comment-head { flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -446,4 +460,24 @@ button:hover { transform: translateY(-1px); }
   .article-body { padding: 20px 14px; }
   .comment-card { padding: 20px 14px; }
 }
+/* image click preview */
+.img-preview-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.88);
+  display: flex; align-items: center; justify-content: center;
+  cursor: zoom-out;
+}
+.img-preview-overlay img {
+  max-width: 92vw; max-height: 92vh;
+  object-fit: contain; border-radius: 6px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.5);
+}
+.img-preview-close {
+  position: absolute; top: 20px; right: 24px;
+  background: rgba(255,255,255,0.12); border: none;
+  color: #fff; font-size: 30px; width: 40px; height: 40px;
+  border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-preview-close:hover { background: rgba(255,255,255,0.25); }
 </style>

@@ -3,7 +3,7 @@
     <header class="hero">
       <p class="eyebrow">ESSAYS &amp; NOTES</p>
       <p class="hero-sub">
-        这里分享个人在技术学习、系统涉及、开发历程的文章。
+        这里分享个人在技术学习、系统设计、开发历程的文章。
       </p>
       <div class="hero-line"></div>
     </header>
@@ -66,7 +66,7 @@
                   <router-link :to="`/article/${item.id}`">{{ item.title }}</router-link>
                 </h2>
                 <img v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" alt="cover" />
-                <p class="card-summary">{{ item.summary || '这篇文章还没有摘要，点击进入查看完整内容。' }}</p>
+                <p class="card-summary">{{ item.summary }}</p>
                 <router-link class="read-more" :to="`/article/${item.id}`">
                   继续阅读 <span class="arrow">&rarr;</span>
                 </router-link>
@@ -113,7 +113,7 @@
                 <router-link :to="`/article/${item.id}`">{{ item.title }}</router-link>
               </h3>
               <img v-if="item.coverUrl" :src="item.coverUrl" class="card-cover" alt="cover" />
-              <p class="hot-summary">{{ item.summary || '这篇文章还没有摘要，点击进入查看完整内容。' }}</p>
+              <p class="hot-summary">{{ item.summary }}</p>
               <router-link class="read-more" :to="`/article/${item.id}`">
                 继续阅读 <span class="arrow">&rarr;</span>
               </router-link>
@@ -268,7 +268,7 @@ onMounted(async () => {
 }
 .hero-sub {
   margin: 20px 0 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 18px;
   line-height: 1.8;
   max-width: 56ch;
@@ -318,7 +318,7 @@ onMounted(async () => {
   font-family: var(--web-font-display);
   font-size: 15px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .category-list {
@@ -328,7 +328,7 @@ onMounted(async () => {
 
 .category-item {
   padding: 10px 16px; border-radius: 999px; cursor: pointer;
-  font-size: 14px; color: rgba(255, 255, 255, 0.5);
+  font-size: 14px; color: rgba(255, 255, 255, 0.65);
   transition: all .22s ease;
   display: flex; justify-content: space-between; align-items: center; font-weight: 500;
 }
@@ -382,7 +382,7 @@ onMounted(async () => {
 .hot-meta {
   display: flex; justify-content: space-between; gap: 10px;
   margin: 0 0 16px; font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
 }
 .hot-card h3 {
   margin: 0 0 16px; font-size: 22px; line-height: 1.3;
@@ -391,13 +391,13 @@ onMounted(async () => {
 .hot-card h3 a:hover { color: var(--web-accent-3); }
 .hot-summary {
   margin: 0 0 auto;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 14px; line-height: 1.75;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
 .hot-card .read-more {
   margin-top: 14px; display: inline-flex; align-items: center; gap: 8px;
-  font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.7);
+  font-size: 14px; font-weight: 700; color: rgba(255, 255, 255, 0.85);
 }
 .hot-card .read-more:hover { color: var(--web-accent-3); }
 .hot-card .read-more .arrow { display: inline-block; transition: transform .25s ease; }
@@ -440,7 +440,7 @@ onMounted(async () => {
   font-size: 12px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   border-radius: 999px;
   cursor: pointer;
   transition: all .18s ease;
@@ -448,14 +448,14 @@ onMounted(async () => {
 .category-chip:hover,
 .category-chip.active {
   background: var(--web-accent-2);
-  border-color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.85);
   color: rgba(255, 255, 255, 0.9);
 }
 
 .state-box { padding: 64px 0; text-align: center; }
 .state-box.narrow { padding: 36px 0 12px; }
 .state-title { margin: 0; font-size: 28px; color: rgba(255, 255, 255, 0.8); }
-.state-text { margin: 12px 0 0; color: rgba(255, 255, 255, 0.5); font-size: 16px; }
+.state-text { margin: 12px 0 0; color: rgba(255, 255, 255, 0.65); font-size: 16px; }
 
 .card {
   display: grid;
@@ -491,10 +491,10 @@ onMounted(async () => {
   flex-wrap: wrap;
   margin-bottom: 8px;
 }
-.meta-date, .meta-views { font-size: 13px; color: rgba(255, 255, 255, 0.5); }
+.meta-date, .meta-views { font-size: 13px; color: rgba(255, 255, 255, 0.65); }
 .meta-cat {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
   font-weight: 600;
   padding: 3px 12px;
   background: rgba(255, 255, 255, 0.1);
@@ -506,12 +506,12 @@ onMounted(async () => {
   font-size: clamp(26px, 3.5vw, 40px);
   line-height: 1.2;
 }
-.card h2 a { transition: color .2s ease; }
+.card h2 a { color: rgba(255, 255, 255, 0.95); transition: color .2s ease; }
 .card h2 a:hover { color: var(--web-accent-3); }
 
 .card-summary {
   margin: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.65);
   font-size: 15px;
   line-height: 1.7;
   max-width: 58ch;
@@ -524,7 +524,7 @@ onMounted(async () => {
   margin-top: 14px;
   font-size: 14px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.85);
   transition: color .2s ease;
 }
 .read-more .arrow {
@@ -561,7 +561,7 @@ onMounted(async () => {
   transform: scale(1.04);
 }
 .pager button:disabled { opacity: .35; cursor: not-allowed; }
-.pager-info { font-size: 14px; color: rgba(255, 255, 255, 0.5); }
+.pager-info { font-size: 14px; color: rgba(255, 255, 255, 0.65); }
 
 @media (min-width: 1100px) {
   .hot-grid {

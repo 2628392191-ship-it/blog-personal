@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -35,9 +36,30 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(400, msg);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ApiResponse<Void> handleNoResource(NoResourceFoundException e) {
+        return ApiResponse.fail(404, "Not Found");
+    }
+
     @ExceptionHandler(Exception.class)
     public ApiResponse<Void> handleException(Exception e, HttpServletRequest request) {
-        log.error("Unhandled error on {}", request.getRequestURI(), e);
+        String uri = request.getRequestURI();
+        // 忽略扫描器探测路径，不打印堆栈
+        if (isScannerPath(uri)) {
+            return ApiResponse.fail(404, "Not Found");
+        }
+        log.error("Unhandled error on {}", uri, e);
         return ApiResponse.fail(500, "系统繁忙");
+    }
+
+    private boolean isScannerPath(String uri) {
+        if (uri == null) return false;
+        String u = uri.toLowerCase();
+        return u.contains(".cgi") || u.contains(".php") || u.contains(".asp")
+            || u.contains("wp-admin") || u.contains("wp-login")
+            || u.contains("phpmyadmin") || u.contains("adminer")
+            || u.contains(".env") || u.contains("actuator")
+            || u.contains("geoserver") || u.contains("solr")
+            || u.contains("/vendor/") || u.contains("/.git/");
     }
 }

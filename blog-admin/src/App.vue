@@ -1,7 +1,7 @@
 <template>
   <div class="admin-shell" :class="{ 'no-sidebar': $route.path === '/login' }">
     <aside class="sidebar" v-if="$route.path !== '/login'">
-      <div class="sidebar-brand" @click="$router.push('/articles')">
+      <div class="sidebar-brand" @click="$router.push('/dashboard')">
         <span class="brand-icon">&#9733;</span>
         <span class="brand-text">Blog Admin</span>
       </div>
@@ -10,6 +10,10 @@
       </button>
 
       <nav class="sidebar-nav">
+        <router-link to="/dashboard" class="nav-item" active-class="nav-item--active">
+          <span class="nav-icon">&#9733;</span>
+          <span>仪表盘</span>
+        </router-link>
         <router-link to="/articles" class="nav-item" active-class="nav-item--active">
           <span class="nav-icon">&#9998;</span>
           <span>文章管理</span>
@@ -100,6 +104,7 @@ const currentTheme = ref('light')
 const applyTheme = (theme) => {
   currentTheme.value = theme === 'dark' ? 'dark' : 'light'
   document.documentElement.setAttribute('data-admin-theme', currentTheme.value)
+  document.documentElement.classList.toggle('dark', currentTheme.value === 'dark')
   localStorage.setItem(THEME_KEY, currentTheme.value)
 }
 

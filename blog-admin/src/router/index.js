@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
+import Dashboard from '../views/Dashboard.vue'
 import ArticleManage from '../views/ArticleManage.vue'
 import ArticleEdit from '../views/ArticleEdit.vue'
 import CommentManage from '../views/CommentManage.vue'
@@ -10,7 +11,8 @@ import LogManage from '../views/LogManage.vue'
 
 const routes = [
   { path: '/login', component: LoginView, meta: { guest: true } },
-  { path: '/', redirect: '/articles' },
+  { path: '/', redirect: '/dashboard' },
+  { path: '/dashboard', component: Dashboard, meta: { requiresAuth: true } },
   { path: '/articles', component: ArticleManage, meta: { requiresAuth: true } },
   { path: '/article/new', component: ArticleEdit, meta: { requiresAuth: true } },
   { path: '/article/:id/edit', component: ArticleEdit, meta: { requiresAuth: true } },
